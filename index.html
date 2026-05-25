@@ -229,6 +229,19 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
         <div class="sync-status" id="weekTgStatus" style="margin-top:6px"></div>
       </div>
 
+      <div class="card" style="border-color:rgba(52,168,83,0.3)">
+        <div class="card-title">🔄 Синхронизация с Google Таблицей</div>
+        <button class="sync-btn" id="syncBtn" onclick="syncToGoogleSheets()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+            <path d="M4 4v5h5M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14.93-2M20 15a8 8 0 0 1-14.93 2"/>
+          </svg>
+          СИНХРОНИЗИРОВАТЬ
+        </button>
+        <div class="sync-status" id="syncStatus" style="margin-top:6px"></div>
+        <div style="margin-top:8px;font-size:9px;color:var(--muted);text-align:center">
+          URL скрипта вводится в ⚙️ НАСТРОЙКИ
+        </div>
+      </div>
 
     </div>
 
@@ -271,8 +284,8 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 
         <div class="form-section">
           <div class="form-section-title">📦 Продажа</div>
-          <div class="form-row"><span class="form-label">Наличка</span><input class="form-input" id="i-palichki" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Клик</span><input class="form-input" id="i-klik" type="number" inputmode="numeric" placeholder="авто" readonly style="opacity:0.5"></div>
+          <div class="form-row"><span class="form-label">Палички (наличи)</span><input class="form-input" id="i-palichki" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Клик (итого)</span><input class="form-input" id="i-klik" type="number" inputmode="numeric" placeholder="авто" readonly style="opacity:0.5"></div>
         </div>
         <button class="save-btn" onclick="saveSalesData()">СОХРАНИТЬ</button>
       </div>
@@ -296,7 +309,7 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
           <div class="form-row"><span class="form-label">Йулкира</span><input class="form-input" id="z-pulkira" type="number" inputmode="numeric" placeholder="0"></div>
         </div>
         <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:9px;padding:9px;margin-bottom:9px;font-size:10px;color:var(--blue);font-weight:700">
-          НАХТ КОЛДИ = Наличка − (Зарплата + Йулкира)<br>
+          НАХТ КОЛДИ = Палички − (Зарплата + Йулкира)<br>
           <span style="color:var(--muted);font-weight:500">Таня и Света: Йулкира фиксированная = 50 000</span>
         </div>
         <button class="save-btn" onclick="saveZpData()" style="background:var(--blue)">СОХРАНИТЬ</button>
@@ -314,8 +327,8 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
           <div class="form-row"><span class="form-label">Пакет/Салфетки</span><input class="form-input" id="e-pak" type="number" inputmode="numeric" placeholder="0"></div>
           <div class="form-row"><span class="form-label">Обед/Кофе/Хлеб</span><input class="form-input" id="e-obed" type="number" inputmode="numeric" placeholder="0"></div>
           <div class="form-row"><span class="form-label">Гель/Азелит/Марля</span><input class="form-input" id="e-gel" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Уборка/Лампочка/Муз</span><input class="form-input" id="e-ubork" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Прочии/Рем</span><input class="form-input" id="e-sul" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Уборка/Лампочка/Рем</span><input class="form-input" id="e-ubork" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Сул/Муз</span><input class="form-input" id="e-sul" type="number" inputmode="numeric" placeholder="0"></div>
         </div>
         <button class="save-btn" onclick="saveExpenseData()" style="background:var(--red)">СОХРАНИТЬ</button>
       </div>
@@ -1002,23 +1015,25 @@ function loadScriptUrl(){
 }
 
 async function syncToGoogleSheets(){
-  const url = document.getElementById('scriptUrl').value.trim();
-  if(!url){ showSyncStatus('Вставьте URL скрипта!', 'err'); return; }
+  const url = localStorage.getItem('scriptUrl')||'';
+  if(!url){
+    showSyncStatus('Вставьте URL скрипта в ⚙️ НАСТРОЙКИ!', 'err');
+    return;
+  }
 
   const btn = document.getElementById('syncBtn');
-  btn.classList.add('syncing');
-  btn.textContent = '⏳ ОТПРАВКА...';
-  showSyncStatus('Подключаюсь...', '');
+  if(btn){ btn.classList.add('syncing'); btn.textContent = '⏳ ОТПРАВКА...'; }
+  showSyncStatus('Подключаюсь к Google Таблице...', '');
 
   const dates = getWeekDates(currentWeekOffset);
   const dateKeys = dates.map(d => dateKey(d));
-  const dateLabels = dates.map(d => {
-    return d.getDate()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear();
-  });
+  const dateLabels = dates.map(d =>
+    d.getDate()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear()
+  );
 
   const payload = {
     action: 'syncAll',
-    weekLabel: shortDate(dates[6]),
+    weekLabel: shortDate(dates[dates.length-1]),
     dates: dateKeys,
     dateLabels: dateLabels,
     sellers: SELLERS.map(s=>({id:s.id, name:s.name})),
@@ -1028,21 +1043,24 @@ async function syncToGoogleSheets(){
     exp: getExp(),
   };
 
-  // Apps Script не поддерживает CORS напрямую, используем no-cors через form trick
+  // Google Apps Script требует no-cors — ответ не читается, но данные доходят
   try {
-    const resp = await fetch(url, {
+    await fetch(url, {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'text/plain'}, // text/plain обходит preflight
       body: JSON.stringify(payload),
       mode: 'no-cors'
     });
-    showSyncStatus('✅ Данные отправлены в Google Таблицу!', 'ok');
+    showSyncStatus('✅ Данные отправлены! Проверьте таблицу.', 'ok');
+    showToast('✅ Google Таблица обновлена!');
   } catch(e) {
-    showSyncStatus('❌ Ошибка: ' + e.message, 'err');
+    showSyncStatus('❌ Ошибка соединения: ' + e.message, 'err');
   }
 
-  btn.classList.remove('syncing');
-  btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14.93-2M20 15a8 8 0 0 1-14.93 2"/></svg> СИНХРОНИЗИРОВАТЬ';
+  if(btn){
+    btn.classList.remove('syncing');
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14.93-2M20 15a8 8 0 0 1-14.93 2"/></svg> СИНХРОНИЗИРОВАТЬ';
+  }
 }
 
 function showSyncStatus(msg, cls){
