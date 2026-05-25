@@ -148,6 +148,10 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 .url-input:focus{border-color:var(--green)}
 .sync-status{font-size:10px;text-align:center;margin-top:6px;min-height:16px}
 .sync-status.ok{color:var(--green)}.sync-status.err{color:var(--red)}
+/* swipe dots */
+.swipe-dots{display:flex;justify-content:center;gap:5px;padding:4px 0 2px;background:var(--surface);flex-shrink:0}
+.swipe-dot{width:5px;height:5px;border-radius:50%;background:var(--border);transition:all 0.2s}
+.swipe-dot.active{width:16px;border-radius:3px;background:var(--green)}
 /* toast */
 .toast{position:fixed;bottom:calc(var(--tab-h) + 12px);left:50%;transform:translateX(-50%);
   background:var(--green);color:#000;padding:9px 18px;border-radius:18px;
@@ -418,6 +422,7 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 
   </main>
 
+  <div class="swipe-dots" id="swipeDots"></div>
   <nav>
     <button class="active" onclick="showPage('report',this)"><span class="icon">📊</span>НЕДЕЛЯ</button>
     <button onclick="showPage('daily',this)"><span class="icon">📅</span>ДЕНЬ</button>
@@ -918,10 +923,15 @@ function saveKlikData(){
 
 // ══ PAGE NAV ══
 function showPage(id,btn){
+  const PAGES_LIST=['report','daily','sales','zp','expenses','klik','settings'];
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   btn.classList.add('active');
+  // обновить точки
+  const idx=PAGES_LIST.indexOf(id);
+  const dots=document.querySelectorAll('.swipe-dot');
+  dots.forEach((d,i)=>d.classList.toggle('active',i===idx));
   if(id==='daily')buildDayPicker();
   if(id==='settings'){loadTgSettings();loadScriptUrl();}
   if(id==='sales')buildSalesDateSel();
@@ -1069,8 +1079,91 @@ function showSyncStatus(msg, cls){
   el.className = 'sync-status' + (cls ? ' '+cls : '');
 }
 
+// ══ СВАЙП ══
+(function(){
+  const PAGES = ['report','daily','sales','zp','expenses','klik','settings'];
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let isSwiping = false;
+
+  function getCurrentPageIndex(){
+    for(let i=0;i<PAGES.length;i++){
+      const p = document.getElementById('page-'+PAGES[i]);
+      if(p && p.classList.contains('active')) return i;
+    }
+    return 0;
+  }
+
+  function updateDots(index){
+    const dots = document.querySelectorAll('.swipe-dot');
+    dots.forEach((d,i) => d.classList.toggle('active', i===index));
+  }
+
+  function goToPage(index){
+    if(index < 0 || index >= PAGES.length) return;
+    const navBtns = document.querySelectorAll('nav button');
+    const id = PAGES[index];
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    const page = document.getElementById('page-'+id);
+    if(page) page.classList.add('active');
+    if(navBtns[index]) navBtns[index].classList.add('active');
+    // trigger page init
+    if(id==='daily') buildDayPicker();
+    if(id==='sales') buildSalesDateSel();
+    if(id==='zp') buildZpDateSel();
+    if(id==='expenses') buildExpDateSel();
+    if(id==='klik') buildKlikDateSel();
+    if(id==='settings'){ loadTgSettings(); loadScriptUrl(); }
+    updateDots(index);
+  }
+
+  document.addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    isSwiping = false;
+  }, {passive: true});
+
+  document.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - touchStartX;
+    const dy = e.touches[0].clientY - touchStartY;
+    if(Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10){
+      isSwiping = true;
+    }
+  }, {passive: true});
+
+  document.addEventListener('touchend', e => {
+    if(!isSwiping) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    // Только горизонтальный свайп (dx должен быть больше dy)
+    if(Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if(Math.abs(dx) < 50) return; // минимальная длина свайпа
+    const cur = getCurrentPageIndex();
+    if(dx < 0){
+      // свайп влево → следующая страница
+      goToPage(cur + 1);
+    } else {
+      // свайп вправо → предыдущая страница
+      goToPage(cur - 1);
+    }
+    isSwiping = false;
+  }, {passive: true});
+})();
+
 // ══ INIT ══
-function renderAll(){updateWeekLabel();renderReport();loadScriptUrl();loadTgSettings();}
+function renderAll(){
+  updateWeekLabel();
+  renderReport();
+  loadScriptUrl();
+  loadTgSettings();
+  // Создать точки
+  const PAGES=['report','daily','sales','zp','expenses','klik','settings'];
+  const cont=document.getElementById('swipeDots');
+  if(cont){
+    cont.innerHTML=PAGES.map((_,i)=>`<div class="swipe-dot${i===0?' active':''}"></div>`).join('');
+  }
+}
 renderAll();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
