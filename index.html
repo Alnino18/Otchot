@@ -271,8 +271,8 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 
         <div class="form-section">
           <div class="form-section-title">📦 Продажа</div>
-          <div class="form-row"><span class="form-label">Палички (наличи)</span><input class="form-input" id="i-palichki" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Клик (итого)</span><input class="form-input" id="i-klik" type="number" inputmode="numeric" placeholder="авто" readonly style="opacity:0.5"></div>
+          <div class="form-row"><span class="form-label">Наличка</span><input class="form-input" id="i-palichki" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Клик</span><input class="form-input" id="i-klik" type="number" inputmode="numeric" placeholder="авто" readonly style="opacity:0.5"></div>
         </div>
         <button class="save-btn" onclick="saveSalesData()">СОХРАНИТЬ</button>
       </div>
@@ -296,7 +296,7 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
           <div class="form-row"><span class="form-label">Йулкира</span><input class="form-input" id="z-pulkira" type="number" inputmode="numeric" placeholder="0"></div>
         </div>
         <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:9px;padding:9px;margin-bottom:9px;font-size:10px;color:var(--blue);font-weight:700">
-          НАХТ КОЛДИ = Палички − (Зарплата + Йулкира)<br>
+          НАХТ КОЛДИ = Наличка − (Зарплата + Йулкира)<br>
           <span style="color:var(--muted);font-weight:500">Таня и Света: Йулкира фиксированная = 50 000</span>
         </div>
         <button class="save-btn" onclick="saveZpData()" style="background:var(--blue)">СОХРАНИТЬ</button>
@@ -314,8 +314,8 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
           <div class="form-row"><span class="form-label">Пакет/Салфетки</span><input class="form-input" id="e-pak" type="number" inputmode="numeric" placeholder="0"></div>
           <div class="form-row"><span class="form-label">Обед/Кофе/Хлеб</span><input class="form-input" id="e-obed" type="number" inputmode="numeric" placeholder="0"></div>
           <div class="form-row"><span class="form-label">Гель/Азелит/Марля</span><input class="form-input" id="e-gel" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Уборка/Лампочка/Рем</span><input class="form-input" id="e-ubork" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Сул/Муз</span><input class="form-input" id="e-sul" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Уборка/Лампочка/Муз</span><input class="form-input" id="e-ubork" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Прочии/Рем</span><input class="form-input" id="e-sul" type="number" inputmode="numeric" placeholder="0"></div>
         </div>
         <button class="save-btn" onclick="saveExpenseData()" style="background:var(--red)">СОХРАНИТЬ</button>
       </div>
