@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Отчет">
+<link rel="manifest" href="manifest.json">
+<title>Недельный Отчет</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#161b27;--surface2:#1e2535;--border:#2a3347;
+  --green:#22c55e;--green-dim:#16a34a;--green-glow:rgba(34,197,94,0.12);
+  --red:#ef4444;--red-dim:#dc2626;--amber:#f59e0b;--blue:#3b82f6;
+  --purple:#a855f7;--teal:#14b8a6;
+  --text:#f0f4ff;--muted:#8896b0;--tab-h:60px;--header-h:56px;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;-webkit-font-smoothing:antialiased}
+#app{display:flex;flex-direction:column;height:100dvh}
+header{height:var(--header-h);display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--green)}
+.week-label{font-size:9px;color:var(--muted);font-weight:700;letter-spacing:1px}
+.week-nav{display:flex;align-items:center;gap:5px}
+.week-nav button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text);font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center}
+.week-range{font-size:10px;color:var(--muted);font-weight:700;white-space:nowrap}
+nav{display:flex;height:var(--tab-h);background:var(--surface);border-top:1px solid var(--border);flex-shrink:0}
+nav button{flex:1;border:none;background:none;color:var(--muted);font-family:'Manrope',sans-serif;
+  font-size:8px;font-weight:700;letter-spacing:0.3px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  padding-bottom:env(safe-area-inset-bottom,0)}
+nav button .icon{font-size:17px}
+nav button.active{color:var(--green)}
+main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.page{display:none;padding:11px 11px 24px}
+.page.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:13px;margin-bottom:10px}
+.card-title{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+/* summary grid */
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.stat-box{background:var(--surface2);border-radius:11px;padding:12px 10px;border:1px solid var(--border)}
+.stat-box.green{border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.07)}
+.stat-box.red{border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.07)}
+.stat-box.amber{border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.07)}
+.stat-box.blue{border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.07)}
+.stat-label{font-size:9px;color:var(--muted);font-weight:700;margin-bottom:2px}
+.stat-value{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;line-height:1}
+.stat-value.green{color:var(--green)}.stat-value.red{color:var(--red)}
+.stat-value.amber{color:var(--amber)}.stat-value.blue{color:var(--blue)}
+.stat-sub{font-size:8px;color:var(--muted);margin-top:2px}
+/* day table */
+.day-table{width:100%;border-collapse:collapse;font-size:10px}
+.day-table th{padding:4px 2px;font-size:8px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);text-align:center}
+.day-table th:first-child{text-align:left}
+.day-table td{padding:6px 2px;border-bottom:1px solid rgba(42,51,71,0.4);text-align:right;font-variant-numeric:tabular-nums}
+.day-table td:first-child{text-align:left;color:var(--muted);font-size:9px;padding-right:3px}
+.day-table .tr-total td{font-weight:800;border-top:1px solid var(--border);padding-top:8px;color:var(--green)}
+.day-table .tr-red td{color:var(--red)}
+.day-table .tr-amber td{color:var(--amber)}
+.today-col{background:rgba(34,197,94,0.07)}
+/* form */
+.form-section{margin-bottom:14px}
+.form-section-title{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);
+  text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.form-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(42,51,71,0.35)}
+.form-row:last-child{border-bottom:none}
+.form-label{flex:1;font-size:12px;color:var(--text)}
+.form-input{width:110px;padding:7px 9px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text);font-family:'Manrope',sans-serif;
+  font-size:12px;font-weight:600;text-align:right;outline:none;-webkit-appearance:none}
+.form-input:focus{border-color:var(--green)}
+.date-selector{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
+.date-selector::-webkit-scrollbar{display:none}
+.date-btn{flex-shrink:0;padding:5px 10px;border-radius:18px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer}
+.date-btn.active{background:var(--green);border-color:var(--green);color:#000}
+/* seller tabs */
+.seller-tabs{display:flex;gap:6px;margin-bottom:12px}
+.seller-tab{flex:1;padding:8px 4px;border-radius:9px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;text-align:center}
+.seller-tab.active-tanya{background:rgba(168,85,247,0.15);border-color:var(--purple);color:var(--purple)}
+.seller-tab.active-sveta{background:rgba(20,184,166,0.15);border-color:var(--teal);color:var(--teal)}
+.seller-tab.active-dilnoza{background:rgba(245,158,11,0.15);border-color:var(--amber);color:var(--amber)}
+.seller-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.badge-tanya{background:rgba(168,85,247,0.2);color:var(--purple)}
+.badge-sveta{background:rgba(20,184,166,0.2);color:var(--teal)}
+.badge-dilnoza{background:rgba(245,158,11,0.2);color:var(--amber)}
+/* save/tg buttons */
+.save-btn{width:100%;padding:13px;border-radius:11px;border:none;background:var(--green);color:#000;
+  font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;cursor:pointer;margin-top:7px}
+.save-btn:active{opacity:0.8}
+.tg-btn{width:100%;padding:13px;border-radius:11px;border:none;
+  background:linear-gradient(135deg,#229ED9,#1a7fc4);color:#fff;
+  font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1.5px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px}
+.tg-btn:active{opacity:0.85}
+.tg-btn svg{width:20px;height:20px;fill:#fff;flex-shrink:0}
+/* klik */
+.klik-input{display:flex;flex-direction:column;gap:6px}
+.klik-row{display:flex;gap:7px;align-items:center}
+.klik-row input{flex:1;padding:8px 9px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text);font-family:'Manrope',sans-serif;
+  font-size:12px;font-weight:600;outline:none;text-align:right;-webkit-appearance:none}
+.klik-row input:focus{border-color:var(--blue)}
+.remove-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--red);font-size:15px;cursor:pointer;flex-shrink:0}
+/* profit bar */
+.profit-bar-label{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:3px}
+.profit-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.profit-bar-fill{height:100%;background:linear-gradient(90deg,var(--green),#86efac);border-radius:2px;transition:width 0.5s}
+/* daily report card */
+.daily-card{background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:12px;margin-bottom:9px}
+.daily-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.daily-card-name{font-size:14px;font-weight:800}
+.daily-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(42,51,71,0.4);font-size:12px}
+.daily-row:last-child{border-bottom:none}
+.daily-row .lbl{color:var(--muted)}
+.daily-row .val{font-weight:700;font-variant-numeric:tabular-nums}
+.daily-row.total{background:var(--green-glow);border-radius:7px;padding:6px 7px;margin-top:3px}
+.daily-row.total .lbl{color:var(--text);font-weight:700}
+.daily-row.total .val{color:var(--green);font-size:13px}
+.daily-row.naht{background:rgba(34,197,94,0.18);border-radius:7px;padding:6px 7px}
+.daily-row.naht .lbl{color:var(--text);font-weight:800}
+.daily-row.naht .val{color:var(--green);font-size:14px;font-family:'Bebas Neue',sans-serif;letter-spacing:1px}
+.daily-sep{height:1px;background:var(--border);margin:8px 0}
+/* day-picker for daily report */
+.day-picker{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;margin-bottom:11px;scrollbar-width:none}
+.day-picker::-webkit-scrollbar{display:none}
+.day-btn{flex-shrink:0;padding:5px 10px;border-radius:18px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer}
+.day-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+/* sync */
+.sync-btn{width:100%;padding:13px;border-radius:11px;border:none;
+  background:linear-gradient(135deg,#34a853,#1a6b3a);color:#fff;
+  font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1.5px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px}
+.sync-btn:active{opacity:0.8}
+.sync-btn.syncing{background:linear-gradient(135deg,#f59e0b,#d97706)}
+.url-input{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text);font-family:'Manrope',sans-serif;
+  font-size:11px;outline:none;margin-bottom:8px}
+.url-input:focus{border-color:var(--green)}
+.sync-status{font-size:10px;text-align:center;margin-top:6px;min-height:16px}
+.sync-status.ok{color:var(--green)}.sync-status.err{color:var(--red)}
+/* toast */
+.toast{position:fixed;bottom:calc(var(--tab-h) + 12px);left:50%;transform:translateX(-50%);
+  background:var(--green);color:#000;padding:9px 18px;border-radius:18px;
+  font-size:11px;font-weight:700;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div>
+      <div class="logo">ОТЧЕТ</div>
+      <div class="week-label" id="weekLabel">ВТ–ПН</div>
+    </div>
+    <div class="week-nav">
+      <button onclick="changeWeek(-1)">‹</button>
+      <span class="week-range" id="weekRange"></span>
+      <button onclick="changeWeek(1)">›</button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ══════════════════ НЕДЕЛЬНЫЙ ОТЧЕТ ══════════════════ -->
+    <div class="page active" id="page-report">
+      <div class="summary-grid">
+        <div class="stat-box green">
+          <div class="stat-label">НАХТ КОЛДИ</div>
+          <div class="stat-value green" id="s-naht">0</div>
+          <div class="stat-sub">палички − (зп + йулкира)</div>
+        </div>
+        <div class="stat-box amber">
+          <div class="stat-label">КАССА</div>
+          <div class="stat-value amber" id="s-kassa">0</div>
+          <div class="stat-sub">палички + клик</div>
+        </div>
+        <div class="stat-box blue">
+          <div class="stat-label">ОБЩАЯ КАССА</div>
+          <div class="stat-value blue" id="s-obshaya">0</div>
+          <div class="stat-sub">касса + прочие расх.</div>
+        </div>
+        <div class="stat-box red">
+          <div class="stat-label">ПРОЧИЕ РАСХОДЫ</div>
+          <div class="stat-value red" id="s-misc">0</div>
+          <div class="stat-sub">продукты и др.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="profit-bar-label"><span>НАХТ КОЛДИ от КАССА</span><span id="marginPct">0%</span></div>
+        <div class="profit-bar"><div class="profit-bar-fill" id="marginBar" style="width:0%"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📦 Продажи по дням</div>
+        <div style="overflow-x:auto">
+          <table class="day-table"><thead><tr id="salesHead"></tr></thead><tbody id="salesBody"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">💼 Зарплата / Йулкира по дням</div>
+        <div style="overflow-x:auto">
+          <table class="day-table"><thead><tr id="zpHead"></tr></thead><tbody id="zpBody"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🧾 Прочие расходы по дням</div>
+        <div style="overflow-x:auto">
+          <table class="day-table"><thead><tr id="expHead"></tr></thead><tbody id="expBody"></tbody></table>
+        </div>
+      </div>
+
+      <div class="card" style="border-color:rgba(34,197,94,0.25)">
+        <div class="card-title">📤 Отправить недельный отчет</div>
+        <button class="tg-btn" onclick="sendWeekToTelegram()">
+          <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+          НЕДЕЛЯ В TELEGRAM
+        </button>
+        <div class="sync-status" id="weekTgStatus" style="margin-top:6px"></div>
+      </div>
+
+
+    </div>
+
+    <!-- ══════════════════ ДНЕВНОЙ ОТЧЕТ ══════════════════ -->
+    <div class="page" id="page-daily">
+      <div class="card">
+        <div class="card-title">Выберите продавца</div>
+        <div class="seller-tabs" id="sellerTabsDaily">
+          <button class="seller-tab active-tanya" onclick="selectDailySeller('tanya',this)">Таня</button>
+          <button class="seller-tab" onclick="selectDailySeller('sveta',this)">Света</button>
+          <button class="seller-tab" onclick="selectDailySeller('dilnoza',this)">Дилноза</button>
+        </div>
+        <div class="card-title" style="margin-top:6px">Выберите день</div>
+        <div class="day-picker" id="dayPicker"></div>
+      </div>
+
+      <div id="dailyCards"></div>
+
+      <div class="card" style="border-color:rgba(34,197,94,0.25)">
+        <div class="card-title">📤 Отправить дневной отчет</div>
+        <button class="tg-btn" onclick="sendDailyToTelegram()">
+          <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.277-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+          ДЕНЬ В TELEGRAM
+        </button>
+        <div class="sync-status" id="dayTgStatus" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ ПРОДАЖИ (ввод) ══════════════════ -->
+    <div class="page" id="page-sales">
+      <div class="card">
+        <div class="card-title">Продавец</div>
+        <div class="seller-tabs" id="sellerTabsSales">
+          <button class="seller-tab active-tanya" onclick="selectSeller('sales','tanya',this)">Таня</button>
+          <button class="seller-tab" onclick="selectSeller('sales','sveta',this)">Света</button>
+          <button class="seller-tab" onclick="selectSeller('sales','dilnoza',this)">Дилноза</button>
+        </div>
+        <div class="card-title">Выберите день</div>
+        <div class="date-selector" id="dateSel"></div>
+
+        <div class="form-section">
+          <div class="form-section-title">📦 Продажа</div>
+          <div class="form-row"><span class="form-label">Палички (наличи)</span><input class="form-input" id="i-palichki" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Клик (итого)</span><input class="form-input" id="i-klik" type="number" inputmode="numeric" placeholder="авто" readonly style="opacity:0.5"></div>
+        </div>
+        <button class="save-btn" onclick="saveSalesData()">СОХРАНИТЬ</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════ ЗП / ЙУЛКИРА (ввод) ══════════════════ -->
+    <div class="page" id="page-zp">
+      <div class="card">
+        <div class="card-title">Продавец</div>
+        <div class="seller-tabs" id="sellerTabsZp">
+          <button class="seller-tab active-tanya" onclick="selectSeller('zp','tanya',this)">Таня</button>
+          <button class="seller-tab" onclick="selectSeller('zp','sveta',this)">Света</button>
+          <button class="seller-tab" onclick="selectSeller('zp','dilnoza',this)">Дилноза</button>
+        </div>
+        <div class="card-title">Выберите день</div>
+        <div class="date-selector" id="dateSelZp"></div>
+
+        <div class="form-section">
+          <div class="form-section-title" style="color:var(--blue)">💼 Выплаты</div>
+          <div class="form-row"><span class="form-label">Зарплата</span><input class="form-input" id="z-zarplata" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Йулкира</span><input class="form-input" id="z-pulkira" type="number" inputmode="numeric" placeholder="0"></div>
+        </div>
+        <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:9px;padding:9px;margin-bottom:9px;font-size:10px;color:var(--blue);font-weight:700">
+          НАХТ КОЛДИ = Палички − (Зарплата + Йулкира)<br>
+          <span style="color:var(--muted);font-weight:500">Таня и Света: Йулкира фиксированная = 50 000</span>
+        </div>
+        <button class="save-btn" onclick="saveZpData()" style="background:var(--blue)">СОХРАНИТЬ</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════ ПРОЧИЕ РАСХОДЫ (ввод) ══════════════════ -->
+    <div class="page" id="page-expenses">
+      <div class="card">
+        <div class="card-title">Выберите день</div>
+        <div class="date-selector" id="dateSelExp"></div>
+        <div class="form-section">
+          <div class="form-section-title" style="color:var(--red)">🛒 Прочие расходы (общие)</div>
+          <div class="form-row"><span class="form-label">Зелень/Соль/Соя</span><input class="form-input" id="e-zel" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Пакет/Салфетки</span><input class="form-input" id="e-pak" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Обед/Кофе/Хлеб</span><input class="form-input" id="e-obed" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Гель/Азелит/Марля</span><input class="form-input" id="e-gel" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Уборка/Лампочка/Рем</span><input class="form-input" id="e-ubork" type="number" inputmode="numeric" placeholder="0"></div>
+          <div class="form-row"><span class="form-label">Сул/Муз</span><input class="form-input" id="e-sul" type="number" inputmode="numeric" placeholder="0"></div>
+        </div>
+        <button class="save-btn" onclick="saveExpenseData()" style="background:var(--red)">СОХРАНИТЬ</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════ КЛИК (ввод) ══════════════════ -->
+    <div class="page" id="page-klik">
+      <div class="card">
+        <div class="card-title">Продавец</div>
+        <div class="seller-tabs" id="sellerTabsKlik">
+          <button class="seller-tab active-tanya" onclick="selectSeller('klik','tanya',this)">Таня</button>
+          <button class="seller-tab" onclick="selectSeller('klik','sveta',this)">Света</button>
+          <button class="seller-tab" onclick="selectSeller('klik','dilnoza',this)">Дилноза</button>
+        </div>
+        <div class="card-title">Выберите день</div>
+        <div class="date-selector" id="dateSelKlik"></div>
+        <div class="form-section">
+          <div class="form-section-title" style="color:var(--blue)">💻 Клик — суммы за день</div>
+          <div id="klikRows" class="klik-input"></div>
+          <button onclick="addKlikRow()" style="margin-top:8px;padding:7px 14px;border-radius:8px;border:1px dashed var(--border);background:none;color:var(--green);font-weight:700;cursor:pointer;width:100%;font-size:12px">+ Добавить сумму</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px">
+          <span style="color:var(--muted);font-weight:700">Итого Клик:</span>
+          <span style="color:var(--blue);font-weight:800" id="klikTotal">0</span>
+        </div>
+        <button class="save-btn" onclick="saveKlikData()" style="background:var(--blue)">СОХРАНИТЬ</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════ НАСТРОЙКИ ══════════════════ -->
+    <div class="page" id="page-settings">
+      <div class="card" style="border-color:rgba(34,197,94,0.3)">
+        <div class="card-title">🤖 Настройки Telegram бота</div>
+
+        <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:9px;padding:10px;margin-bottom:12px;font-size:10px;color:var(--muted);line-height:1.7">
+          <b style="color:var(--green)">Как получить TOKEN:</b><br>
+          1. Найдите <b style="color:var(--text)">@BotFather</b> в Telegram<br>
+          2. Напишите <b style="color:var(--text)">/newbot</b><br>
+          3. Следуйте инструкциям → скопируйте TOKEN<br><br>
+          <b style="color:var(--green)">Как получить Chat ID:</b><br>
+          1. Найдите <b style="color:var(--text)">@userinfobot</b> в Telegram<br>
+          2. Напишите <b style="color:var(--text)">/start</b><br>
+          3. Скопируйте ваш <b style="color:var(--text)">Id</b>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title" style="color:var(--blue)">🔑 Bot Token</div>
+          <input class="url-input" id="tgToken" type="text"
+            placeholder="123456789:AAFxxxxxxxxxxxxxxxx"
+            style="font-size:11px;letter-spacing:0.3px"
+            oninput="saveTgSettings()">
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title" style="color:var(--blue)">💬 Chat ID</div>
+          <input class="url-input" id="tgChatId" type="text"
+            placeholder="987654321"
+            oninput="saveTgSettings()">
+          <div style="font-size:9px;color:var(--muted);margin-top:4px">
+            Можно также ID группы или канала (начинается с -100...)
+          </div>
+        </div>
+
+        <button class="save-btn" onclick="testTgBot()" style="background:linear-gradient(135deg,#229ED9,#1a7fc4)">
+          🧪 ТЕСТ — ОТПРАВИТЬ ТЕСТОВОЕ СООБЩЕНИЕ
+        </button>
+        <div class="sync-status" id="tgTestStatus" style="margin-top:8px"></div>
+      </div>
+
+      <div class="card" style="border-color:rgba(52,168,83,0.3)">
+        <div class="card-title">🔄 Google Таблица</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:8px">
+          URL вашего Google Apps Script (Web App URL)
+        </div>
+        <input class="url-input" id="scriptUrl" type="url"
+          placeholder="https://script.google.com/macros/s/.../exec"
+          oninput="saveScriptUrl()">
+        <div style="margin-top:8px;background:var(--surface2);border-radius:8px;padding:10px;font-size:9px;color:var(--muted);line-height:1.6">
+          <b style="color:var(--text)">Как подключить:</b><br>
+          1. Google Таблица → Расширения → Apps Script<br>
+          2. Вставьте код из <b>google-apps-script.gs</b><br>
+          3. Развернуть → Веб-приложение → Доступ: Все<br>
+          4. Скопируйте URL → вставьте выше
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <nav>
+    <button class="active" onclick="showPage('report',this)"><span class="icon">📊</span>НЕДЕЛЯ</button>
+    <button onclick="showPage('daily',this)"><span class="icon">📅</span>ДЕНЬ</button>
+    <button onclick="showPage('sales',this)"><span class="icon">🏪</span>ПРОДАЖИ</button>
+    <button onclick="showPage('zp',this)"><span class="icon">💼</span>ЗП/ЙУЛ</button>
+    <button onclick="showPage('expenses',this)"><span class="icon">🧾</span>РАСХОДЫ</button>
+    <button onclick="showPage('klik',this)"><span class="icon">💻</span>КЛИК</button>
+    <button onclick="showPage('settings',this)"><span class="icon">⚙️</span>НАСТРОЙКИ</button>
+  </nav>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ══ КОНСТАНТЫ ══
+const SELLERS = [
+  {id:'tanya',  name:'Таня',    cls:'tanya',   color:'var(--purple)'},
+  {id:'sveta',  name:'Света',   cls:'sveta',   color:'var(--teal)'},
+  {id:'dilnoza',name:'Дилноза', cls:'dilnoza', color:'var(--amber)'},
+];
+
+// ══ НЕДЕЛЯ: ВТ → ПН ══
+let currentWeekOffset = 0;
+
+function getWeekDates(offset=0){
+  const now = new Date();
+  const dow = now.getDay();
+  const daysToTue = dow===0?5:dow===1?6:dow-2;
+  const tue = new Date(now);
+  tue.setDate(now.getDate()-daysToTue+offset*7);
+  tue.setHours(0,0,0,0);
+  const dates=[];
+  for(let i=0;i<7;i++){const d=new Date(tue);d.setDate(tue.getDate()+i);dates.push(d);}
+  return dates;
+}
+const DAY_RU=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+function dayLabel(d){return DAY_RU[d.getDay()]+' '+d.getDate();}
+function shortDate(d){return d.getDate()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+(String(d.getFullYear()).slice(2));}
+function dateKey(d){return d.toISOString().slice(0,10);}
+function fmt(n){if(!n&&n!==0)return '–';return Number(n).toLocaleString('ru-RU');}
+
+// ══ STORAGE ══
+const LS={
+  get(k){try{return JSON.parse(localStorage.getItem(k)||'{}')}catch{return{}}},
+  set(k,v){localStorage.setItem(k,JSON.stringify(v))}
+};
+// sales: { dateKey: { tanya:{palichki}, sveta:{palichki}, dilnoza:{palichki} } }
+// zp:    { dateKey: { tanya:{zarplata,pulkira}, sveta:{...}, dilnoza:{...} } }
+// klik:  { dateKey: { tanya:[...], sveta:[...], dilnoza:[...] } }
+// exp:   { dateKey: { zel,pak,obed,gel,ubork,sul } }
+const getSales=()=>LS.get('s3'); const saveSales=d=>LS.set('s3',d);
+const getZp=()=>LS.get('z3');    const saveZp=d=>LS.set('z3',d);
+const getKlik=()=>LS.get('k3');  const saveKlik=d=>LS.set('k3',d);
+const getExp=()=>LS.get('e3');   const saveExp=d=>LS.set('e3',d);
+
+// ══ CURRENT SELLER STATE ══
+const curSeller={sales:'tanya', zp:'tanya', klik:'tanya'};
+
+// ══ WEEK NAV ══
+function changeWeek(dir){currentWeekOffset+=dir;renderAll();}
+function updateWeekLabel(){
+  const dates=getWeekDates(currentWeekOffset);
+  document.getElementById('weekRange').textContent=shortDate(dates[0])+'–'+shortDate(dates[6]);
+  document.getElementById('weekLabel').textContent='ВТ '+dates[0].getDate()+' – ПН '+dates[6].getDate();
+}
+
+// ══ DATE SELECTOR ══
+function buildDateSelector(id, onSelect){
+  const cont=document.getElementById(id);
+  const dates=getWeekDates(currentWeekOffset);
+  cont.innerHTML='';
+  const todayStr=dateKey(new Date());
+  let ai=dates.findIndex(d=>dateKey(d)===todayStr);
+  if(ai<0)ai=0;
+  dates.forEach((d,i)=>{
+    const btn=document.createElement('button');
+    btn.className='date-btn'+(i===ai?' active':'');
+    btn.textContent=dayLabel(d);
+    btn.onclick=()=>{cont.querySelectorAll('.date-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');onSelect(d);};
+    cont.appendChild(btn);
+  });
+  onSelect(dates[ai]);
+}
+
+// ══ SELLER TABS ══
+function selectSeller(page, sellerId, btn){
+  curSeller[page]=sellerId;
+  const tabGroup=btn.parentElement;
+  tabGroup.querySelectorAll('.seller-tab').forEach(b=>{
+    b.className='seller-tab';
+  });
+  btn.className='seller-tab active-'+sellerId;
+  // reload fields
+  if(page==='sales')loadSalesFields();
+  if(page==='zp')loadZpFields();
+  if(page==='klik')loadKlikFields();
+}
+
+// ══ WEEKLY REPORT ══
+function renderReport(){
+  const dates=getWeekDates(currentWeekOffset);
+  const sales=getSales(); const zp=getZp(); const exp=getExp(); const klik=getKlik();
+  const todayStr=dateKey(new Date());
+
+  let totPalichki=0,totKlik=0,totZP=0,totPul=0,totMisc=0;
+
+  // — Продажи —
+  document.getElementById('salesHead').innerHTML=
+    '<th>Продавец</th>'+dates.map(d=>`<th class="${dateKey(d)===todayStr?'today-col':''}">${d.getDate()}.${d.getMonth()+1}</th>`).join('')+'<th>ОБЩ</th>';
+
+  let salesRows='';
+  SELLERS.forEach(s=>{
+    const palVals=dates.map(d=>Number(((sales[dateKey(d)]||{})[s.id]||{}).palichki||0));
+    const klVals=dates.map(d=>{const arr=((klik[dateKey(d)]||{})[s.id])||[];return arr.reduce((a,b)=>a+(Number(b)||0),0);});
+    const kassaVals=dates.map((_,i)=>palVals[i]+klVals[i]);
+    const totPal=palVals.reduce((a,b)=>a+b,0);
+    const totKl=klVals.reduce((a,b)=>a+b,0);
+    totPalichki+=totPal; totKlik+=totKl;
+    salesRows+=`<tr><td style="color:${s.color};font-weight:700">${s.name} Нахт</td>${palVals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td style="color:${s.color}">${fmt(totPal)}</td></tr>`;
+    salesRows+=`<tr><td style="color:var(--blue)">  Клик</td>${klVals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td style="color:var(--blue)">${fmt(totKl)}</td></tr>`;
+    salesRows+=`<tr class="tr-amber"><td>  Касса</td>${kassaVals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td>${fmt(totPal+totKl)}</td></tr>`;
+  });
+  // итого строка
+  const totDayKassa=dates.map(d=>{
+    let s=0; SELLERS.forEach(sl=>{
+      s+=Number(((sales[dateKey(d)]||{})[sl.id]||{}).palichki||0);
+      const kArr=((klik[dateKey(d)]||{})[sl.id])||[];
+      s+=kArr.reduce((a,b)=>a+(Number(b)||0),0);
+    }); return s;
+  });
+  salesRows+=`<tr class="tr-total"><td>ИТОГО КАССА</td>${totDayKassa.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td>${fmt(totPalichki+totKlik)}</td></tr>`;
+  document.getElementById('salesBody').innerHTML=salesRows;
+
+  // — ЗП / Йулкира —
+  document.getElementById('zpHead').innerHTML=
+    '<th>Продавец</th>'+dates.map(d=>`<th class="${dateKey(d)===todayStr?'today-col':''}">${d.getDate()}.${d.getMonth()+1}</th>`).join('')+'<th>ОБЩ</th>';
+  let zpRows='';
+  SELLERS.forEach(s=>{
+    const zpVals=dates.map(d=>Number(((zp[dateKey(d)]||{})[s.id]||{}).zarplata||0));
+    const pulVals=dates.map(d=>Number(((zp[dateKey(d)]||{})[s.id]||{}).pulkira||0));
+    const totZ=zpVals.reduce((a,b)=>a+b,0); const totP=pulVals.reduce((a,b)=>a+b,0);
+    totZP+=totZ; totPul+=totP;
+    zpRows+=`<tr><td style="color:${s.color};font-weight:700">${s.name} ЗП</td>${zpVals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td style="color:${s.color}">${fmt(totZ)}</td></tr>`;
+    zpRows+=`<tr class="tr-red"><td>  Йулкира</td>${pulVals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td>${fmt(totP)}</td></tr>`;
+  });
+  const zpDayTot=dates.map(d=>{let s=0;SELLERS.forEach(sl=>{s+=Number(((zp[dateKey(d)]||{})[sl.id]||{}).zarplata||0)+Number(((zp[dateKey(d)]||{})[sl.id]||{}).pulkira||0);});return s;});
+  zpRows+=`<tr class="tr-total"><td>ИТОГО ЗП+ЙУЛ</td>${zpDayTot.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td>${fmt(totZP+totPul)}</td></tr>`;
+  document.getElementById('zpBody').innerHTML=zpRows;
+
+  // — Прочие расходы —
+  const expCats=[['Зелень/Соль','zel'],['Пакет/Салф','pak'],['Обед/Кофе','obed'],['Гель/Азелит','gel'],['Уборка/Рем','ubork'],['Сул/Муз','sul']];
+  document.getElementById('expHead').innerHTML=
+    '<th>Статья</th>'+dates.map(d=>`<th class="${dateKey(d)===todayStr?'today-col':''}">${d.getDate()}.${d.getMonth()+1}</th>`).join('')+'<th>ОБЩ</th>';
+  let expRows=''; const expDayTot=new Array(7).fill(0);
+  expCats.forEach(([label,field])=>{
+    const vals=dates.map((d,i)=>{const v=Number((getExp()[dateKey(d)]||{})[field]||0);expDayTot[i]+=v;totMisc+=v;return v;});
+    const tot=vals.reduce((a,b)=>a+b,0);
+    expRows+=`<tr><td>${label}</td>${vals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td style="color:var(--red)">${fmt(tot)}</td></tr>`;
+  });
+  expRows+=`<tr class="tr-amber"><td>ИТОГО</td>${expDayTot.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td>${fmt(expDayTot.reduce((a,b)=>a+b,0))}</td></tr>`;
+  document.getElementById('expBody').innerHTML=expRows;
+
+  // — Сводка —
+  const kassa=totPalichki+totKlik;
+  const nahtKoldi=totPalichki-(totZP+totPul);
+  const obshaya=kassa+totMisc;
+  document.getElementById('s-naht').textContent=fmt(nahtKoldi);
+  document.getElementById('s-kassa').textContent=fmt(kassa);
+  document.getElementById('s-obshaya').textContent=fmt(obshaya);
+  document.getElementById('s-misc').textContent=fmt(totMisc);
+  const pct=kassa>0?Math.round((nahtKoldi/kassa)*100):0;
+  document.getElementById('marginPct').textContent=pct+'%';
+  document.getElementById('marginBar').style.width=Math.max(0,Math.min(100,pct))+'%';
+}
+
+// ══ ДНЕВНОЙ ОТЧЕТ ══
+let selDailyDate=null;
+let selDailySeller='tanya';
+
+function selectDailySeller(sid, btn){
+  selDailySeller=sid;
+  const tabs=document.getElementById('sellerTabsDaily');
+  tabs.querySelectorAll('.seller-tab').forEach(b=>b.className='seller-tab');
+  btn.className='seller-tab active-'+sid;
+  renderDailyCards();
+}
+
+function buildDayPicker(){
+  const cont=document.getElementById('dayPicker');
+  const dates=getWeekDates(currentWeekOffset);
+  cont.innerHTML='';
+  const todayStr=dateKey(new Date());
+  let ai=dates.findIndex(d=>dateKey(d)===todayStr);
+  if(ai<0)ai=0;
+  dates.forEach((d,i)=>{
+    const btn=document.createElement('button');
+    btn.className='day-btn'+(i===ai?' active':'');
+    btn.textContent=dayLabel(d);
+    btn.onclick=()=>{
+      cont.querySelectorAll('.day-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      selDailyDate=d; renderDailyCards();
+    };
+    cont.appendChild(btn);
+  });
+  selDailyDate=dates[ai];
+  renderDailyCards();
+}
+
+function getDayData(d){
+  const k=dateKey(d);
+  const sales=getSales(); const zp=getZp(); const klik=getKlik(); const exp=getExp();
+  const result={date:d, sellers:[], totalMisc:0, totalKassa:0, totalNaht:0, totalObshaya:0};
+  SELLERS.forEach(s=>{
+    const pal=Number(((sales[k]||{})[s.id]||{}).palichki||0);
+    const klArr=((klik[k]||{})[s.id])||[];
+    const kl=klArr.reduce((a,b)=>a+(Number(b)||0),0);
+    const zv=Number(((zp[k]||{})[s.id]||{}).zarplata||0);
+    const pv=Number(((zp[k]||{})[s.id]||{}).pulkira||0);
+    const kassaOylik=pal+kl;
+    const naht=pal-(zv+pv);
+    result.sellers.push({...s, pal, kl, zv, pv, kassaOylik, naht});
+    result.totalKassa+=kassaOylik;
+    result.totalNaht+=naht;
+  });
+  const expDay=exp[k]||{};
+  ['zel','pak','obed','gel','ubork','sul'].forEach(f=>result.totalMisc+=Number(expDay[f]||0));
+  result.totalObshaya=result.totalKassa+result.totalMisc;
+  return result;
+}
+
+function renderDailyCards(){
+  if(!selDailyDate)return;
+  const data=getDayData(selDailyDate);
+  const cont=document.getElementById('dailyCards');
+  let html='';
+
+  // Показываем только выбранного продавца
+  const s = data.sellers.find(s=>s.id===selDailySeller) || data.sellers[0];
+  if(s){
+    html+=`
+    <div class="daily-card">
+      <div class="daily-card-header">
+        <div class="daily-card-name" style="color:${s.color}">${shortDate(selDailyDate)} ${s.name}</div>
+        <span class="seller-badge badge-${s.cls}">${s.name}</span>
+      </div>
+      <div class="daily-row naht">
+        <span class="lbl">Нахт</span>
+        <span class="val">${fmt(s.pal)}</span>
+      </div>
+      <div class="daily-row">
+        <span class="lbl">Клик</span>
+        <span class="val" style="color:var(--blue)">${fmt(s.kl)}</span>
+      </div>
+      <div class="daily-row total">
+        <span class="lbl">Касса ойлик</span>
+        <span class="val">${fmt(s.kassaOylik)}</span>
+      </div>
+      <div class="daily-sep"></div>
+      <div class="daily-row">
+        <span class="lbl">Зарплата</span>
+        <span class="val" style="color:var(--red)">${fmt(s.zv)}</span>
+      </div>
+      <div class="daily-row">
+        <span class="lbl">Йулкира</span>
+        <span class="val" style="color:var(--red)">${fmt(s.pv)}</span>
+      </div>
+      <div class="daily-sep"></div>
+      <div class="daily-row" style="background:rgba(239,68,68,0.07);border-radius:7px;padding:5px 7px">
+        <span class="lbl" style="color:var(--text);font-weight:700">Ойлидан ташкари Расход</span>
+        <span class="val" style="color:var(--red)">${fmt(data.totalMisc)}</span>
+      </div>
+      <div class="daily-sep"></div>
+      <div class="daily-row">
+        <span class="lbl" style="color:var(--text);font-weight:700">Общая касса</span>
+        <span class="val" style="color:var(--blue)">${fmt(s.kassaOylik + data.totalMisc)}</span>
+      </div>
+      <div class="daily-row naht" style="margin-top:4px">
+        <span class="lbl">Нахт колди</span>
+        <span class="val">${fmt(s.naht)}</span>
+      </div>
+    </div>`;
+  }
+
+  // Итого за день
+  html+=`
+  <div class="card" style="border-color:rgba(34,197,94,0.3)">
+    <div class="card-title">📊 ИТОГО ЗА ДЕНЬ — ${shortDate(selDailyDate)}</div>
+    <div class="daily-row total">
+      <span class="lbl">Общая касса (все)</span>
+      <span class="val" style="color:var(--blue)">${fmt(data.totalObshaya)}</span>
+    </div>
+    <div class="daily-row naht" style="margin-top:5px">
+      <span class="lbl">Нахт колди (все)</span>
+      <span class="val">${fmt(data.totalNaht)}</span>
+    </div>
+    <div class="daily-row" style="margin-top:4px">
+      <span class="lbl" style="color:var(--muted)">Прочие расходы</span>
+      <span class="val" style="color:var(--red)">${fmt(data.totalMisc)}</span>
+    </div>
+  </div>`;
+
+  cont.innerHTML=html;
+}
+
+// ══ TELEGRAM — ДЕНЬ ══
+function sendDailyToTelegram(){
+  if(!selDailyDate){showToast('Выберите день');return;}
+  const data=getDayData(selDailyDate);
+  const n=v=>v?Number(v).toLocaleString('ru-RU'):'0';
+  let lines=[];
+  lines.push(`📅 ДНЕВНОЙ ОТЧЕТ ${shortDate(selDailyDate)}`);
+  lines.push('');
+
+  const s = data.sellers.find(s=>s.id===selDailySeller) || data.sellers[0];
+  if(s){
+    lines.push(`👤 ${shortDate(selDailyDate)} ${s.name}`);
+    lines.push(`Нахт:          ${n(s.pal)}`);
+    lines.push(`Клик:          ${n(s.kl)}`);
+    lines.push(`Касса ойлик:   ${n(s.kassaOylik)}`);
+    lines.push('');
+    lines.push(`Зарплата:      ${n(s.zv)}`);
+    lines.push(`Йулкира:       ${n(s.pv)}`);
+    lines.push('');
+    lines.push(`Ойлидан ташкари Расход: ${n(data.totalMisc)}`);
+    lines.push('');
+    lines.push(`Общий касса:   ${n(s.kassaOylik+data.totalMisc)}`);
+    lines.push(`Нахт колди:    ${n(s.naht)}`);
+    lines.push('');
+  }
+
+  lines.push(`📊 ИТОГО ЗА ДЕНЬ`);
+  lines.push(`Общая касса:   ${n(data.totalObshaya)}`);
+  lines.push(`Нахт колди:    ${n(data.totalNaht)}`);
+  lines.push(`Прочие расх:   ${n(data.totalMisc)}`);
+
+  sendViaTgBot(lines.join('\n'), 'weekTgStatus');
+}
+
+// ══ TELEGRAM — НЕДЕЛЯ ══
+function sendWeekToTelegram(){
+  const dates=getWeekDates(currentWeekOffset);
+  const sales=getSales();const zp=getZp();const klik=getKlik();const exp=getExp();
+  const n=v=>v?Number(v).toLocaleString('ru-RU'):'0';
+  let totPal=0,totKl=0,totZP=0,totPul=0,totMisc=0;
+  let lines=[];
+  lines.push(`📊 НЕДЕЛЬНЫЙ ОТЧЕТ ${shortDate(dates[0])} – ${shortDate(dates[6])}`);
+  lines.push('');
+
+  SELLERS.forEach(s=>{
+    let sPal=0,sKl=0,sZP=0,sPul=0;
+    dates.forEach(d=>{
+      const k=dateKey(d);
+      sPal+=Number(((sales[k]||{})[s.id]||{}).palichki||0);
+      const kArr=((klik[k]||{})[s.id])||[];
+      sKl+=kArr.reduce((a,b)=>a+(Number(b)||0),0);
+      sZP+=Number(((zp[k]||{})[s.id]||{}).zarplata||0);
+      sPul+=Number(((zp[k]||{})[s.id]||{}).pulkira||0);
+    });
+    totPal+=sPal;totKl+=sKl;totZP+=sZP;totPul+=sPul;
+    lines.push(`👤 ${s.name}:`);
+    lines.push(`  Палички: ${n(sPal)}  |  Клик: ${n(sKl)}`);
+    lines.push(`  Касса: ${n(sPal+sKl)}`);
+    lines.push(`  ЗП: ${n(sZP)}  |  Йулкира: ${n(sPul)}`);
+    lines.push(`  Нахт колди: ${n(sPal-(sZP+sPul))}`);
+    lines.push('');
+  });
+
+  const expCats=[['Зелень/Соль','zel'],['Пакет/Салф','pak'],['Обед/Кофе','obed'],['Гель/Азелит','gel'],['Уборка/Рем','ubork'],['Сул/Муз','sul']];
+  lines.push('🧾 Прочие расходы:');
+  expCats.forEach(([lbl,field])=>{
+    const tot=dates.reduce((a,d)=>a+Number((exp[dateKey(d)]||{})[field]||0),0);
+    if(tot>0){lines.push(`  ${lbl}: ${n(tot)}`);totMisc+=tot;}
+  });
+  lines.push('');
+
+  const kassa=totPal+totKl;
+  const naht=totPal-(totZP+totPul);
+  const obshaya=kassa+totMisc;
+  lines.push('══════════════════════');
+  lines.push(`✅ НАХТ КОЛДИ:   ${n(naht)} сум`);
+  lines.push(`💰 КАССА:        ${n(kassa)} сум`);
+  lines.push(`📦 ОБЩАЯ КАССА:  ${n(obshaya)} сум`);
+  lines.push(`💼 ЗП+Йулкира:  ${n(totZP+totPul)} сум`);
+  lines.push(`🧾 Прочие расх: ${n(totMisc)} сум`);
+  lines.push('══════════════════════');
+
+  sendViaTgBot(lines.join('\n'), 'weekTgStatus');
+}
+
+// ══ SALES INPUT ══
+let selSalesDate=null;
+function buildSalesDateSel(){buildDateSelector('dateSel',d=>{selSalesDate=d;loadSalesFields();});}
+function loadSalesFields(){
+  if(!selSalesDate)return;
+  const k=dateKey(selSalesDate); const sid=curSeller.sales;
+  const s=((getSales()[k]||{})[sid])||{};
+  document.getElementById('i-palichki').value=s.palichki||'';
+  const kArr=((getKlik()[k]||{})[sid])||[];
+  document.getElementById('i-klik').value=kArr.reduce((a,b)=>a+(Number(b)||0),0)||'';
+}
+function saveSalesData(){
+  if(!selSalesDate)return;
+  const k=dateKey(selSalesDate); const sid=curSeller.sales;
+  const all=getSales(); if(!all[k])all[k]={};
+  all[k][sid]={palichki:Number(document.getElementById('i-palichki').value)||0};
+  saveSales(all); showToast('✅ Продажи сохранены!'); renderReport();
+}
+
+// ══ ZP INPUT ══
+let selZpDate=null;
+function buildZpDateSel(){buildDateSelector('dateSelZp',d=>{selZpDate=d;loadZpFields();});}
+const FIXED_PULKIRA={'tanya':50000,'sveta':50000};
+
+function loadZpFields(){
+  if(!selZpDate)return;
+  const k=dateKey(selZpDate); const sid=curSeller.zp;
+  const z=((getZp()[k]||{})[sid])||{};
+  document.getElementById('z-zarplata').value=z.zarplata||'';
+  const inp=document.getElementById('z-pulkira');
+  if(FIXED_PULKIRA[sid]!==undefined){
+    inp.value=FIXED_PULKIRA[sid];
+    inp.readOnly=true;
+    inp.style.opacity='0.5';
+    inp.style.cursor='not-allowed';
+  } else {
+    inp.value=z.pulkira||'';
+    inp.readOnly=false;
+    inp.style.opacity='1';
+    inp.style.cursor='';
+  }
+}
+function saveZpData(){
+  if(!selZpDate)return;
+  const k=dateKey(selZpDate); const sid=curSeller.zp;
+  const all=getZp(); if(!all[k])all[k]={};
+  const pulkira=FIXED_PULKIRA[sid]!==undefined ? FIXED_PULKIRA[sid] : (Number(document.getElementById('z-pulkira').value)||0);
+  all[k][sid]={zarplata:Number(document.getElementById('z-zarplata').value)||0, pulkira};
+  saveZp(all); showToast('✅ Зарплата сохранена!'); renderReport();
+}
+
+// ══ EXPENSE INPUT ══
+let selExpDate=null;
+function buildExpDateSel(){buildDateSelector('dateSelExp',d=>{selExpDate=d;loadExpFields();});}
+function loadExpFields(){
+  if(!selExpDate)return;
+  const k=dateKey(selExpDate); const e=getExp()[k]||{};
+  ['zel','pak','obed','gel','ubork','sul'].forEach(f=>document.getElementById('e-'+f).value=e[f]||'');
+}
+function saveExpenseData(){
+  if(!selExpDate)return;
+  const k=dateKey(selExpDate); const all=getExp();
+  all[k]={zel:+document.getElementById('e-zel').value||0,pak:+document.getElementById('e-pak').value||0,
+    obed:+document.getElementById('e-obed').value||0,gel:+document.getElementById('e-gel').value||0,
+    ubork:+document.getElementById('e-ubork').value||0,sul:+document.getElementById('e-sul').value||0};
+  saveExp(all); showToast('✅ Расходы сохранены!'); renderReport();
+}
+
+// ══ KLIK INPUT ══
+let selKlikDate=null;
+function buildKlikDateSel(){buildDateSelector('dateSelKlik',d=>{selKlikDate=d;loadKlikFields();});}
+function loadKlikFields(){
+  if(!selKlikDate)return;
+  const k=dateKey(selKlikDate); const sid=curSeller.klik;
+  const vals=((getKlik()[k]||{})[sid])||[0];
+  renderKlikRows(vals);
+}
+function renderKlikRows(vals){
+  const cont=document.getElementById('klikRows'); cont.innerHTML='';
+  vals.forEach((v,i)=>{
+    const row=document.createElement('div');row.className='klik-row';
+    row.innerHTML=`<input type="number" inputmode="numeric" value="${v||''}" placeholder="0" oninput="updateKlikTotal()">
+      ${i>0?`<button class="remove-btn" onclick="removeKlikRow(this)">✕</button>`:'<div style="width:32px"></div>'}`;
+    cont.appendChild(row);
+  });
+  updateKlikTotal();
+}
+function addKlikRow(){
+  const cont=document.getElementById('klikRows'); const row=document.createElement('div');
+  row.className='klik-row';
+  row.innerHTML=`<input type="number" inputmode="numeric" placeholder="0" oninput="updateKlikTotal()"><button class="remove-btn" onclick="removeKlikRow(this)">✕</button>`;
+  cont.appendChild(row); updateKlikTotal();
+}
+function removeKlikRow(btn){btn.parentElement.remove();updateKlikTotal();}
+function updateKlikTotal(){
+  let s=0;document.querySelectorAll('#klikRows input').forEach(i=>s+=Number(i.value)||0);
+  document.getElementById('klikTotal').textContent=fmt(s);
+}
+function saveKlikData(){
+  if(!selKlikDate)return;
+  const k=dateKey(selKlikDate); const sid=curSeller.klik;
+  const vals=Array.from(document.querySelectorAll('#klikRows input')).map(i=>Number(i.value)||0);
+  const all=getKlik(); if(!all[k])all[k]={};
+  all[k][sid]=vals; saveKlik(all);
+  showToast('✅ Клик сохранён!');
+  document.getElementById('i-klik').value=vals.reduce((a,b)=>a+b,0)||'';
+  renderReport();
+}
+
+// ══ PAGE NAV ══
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='daily')buildDayPicker();
+  if(id==='settings'){loadTgSettings();loadScriptUrl();}
+  if(id==='sales')buildSalesDateSel();
+  if(id==='zp')buildZpDateSel();
+  if(id==='expenses')buildExpDateSel();
+  if(id==='klik')buildKlikDateSel();
+}
+
+// ══ TOAST ══
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ══ TELEGRAM BOT ══
+function saveTgSettings(){
+  localStorage.setItem('tgToken', document.getElementById('tgToken').value.trim());
+  localStorage.setItem('tgChatId', document.getElementById('tgChatId').value.trim());
+}
+
+function loadTgSettings(){
+  const token = localStorage.getItem('tgToken')||'';
+  const chatId = localStorage.getItem('tgChatId')||'';
+  const t = document.getElementById('tgToken');
+  const c = document.getElementById('tgChatId');
+  if(t) t.value = token;
+  if(c) c.value = chatId;
+}
+
+async function sendViaTgBot(text, statusId){
+  const token  = localStorage.getItem('tgToken')||'';
+  const chatId = localStorage.getItem('tgChatId')||'';
+
+  if(!token || !chatId){
+    // Fallback — открыть через share
+    window.open('https://t.me/share/url?url=&text='+encodeURIComponent(text),'_blank');
+    showEl(statusId, '📤 Откройте Telegram и выберите чат', '');
+    return;
+  }
+
+  showEl(statusId, '⏳ Отправка...', '');
+  try {
+    const url = 'https://api.telegram.org/bot'+token+'/sendMessage';
+    const resp = await fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({chat_id: chatId, text: text, parse_mode:'HTML'})
+    });
+    const json = await resp.json();
+    if(json.ok){
+      showEl(statusId, '✅ Отправлено в Telegram!', 'ok');
+    } else {
+      showEl(statusId, '❌ Ошибка: '+json.description, 'err');
+    }
+  } catch(e){
+    showEl(statusId, '❌ '+e.message, 'err');
+  }
+}
+
+async function testTgBot(){
+  const token  = document.getElementById('tgToken').value.trim();
+  const chatId = document.getElementById('tgChatId').value.trim();
+  if(!token||!chatId){ showEl('tgTestStatus','Введите TOKEN и Chat ID','err'); return; }
+  showEl('tgTestStatus','⏳ Отправка теста...','');
+  try {
+    const resp = await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({chat_id:chatId, text:'✅ Бот подключён! Отчёты будут приходить сюда 🎉'})
+    });
+    const json = await resp.json();
+    if(json.ok) showEl('tgTestStatus','✅ Тест успешен! Проверьте Telegram','ok');
+    else showEl('tgTestStatus','❌ '+json.description,'err');
+  } catch(e){ showEl('tgTestStatus','❌ '+e.message,'err'); }
+}
+
+function showEl(id, msg, cls){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.textContent=msg;
+  el.className='sync-status'+(cls?' '+cls:'');
+}
+
+// ══ GOOGLE SHEETS SYNC ══
+function saveScriptUrl(){
+  localStorage.setItem('scriptUrl', document.getElementById('scriptUrl').value.trim());
+}
+
+function loadScriptUrl(){
+  const url = localStorage.getItem('scriptUrl')||'';
+  document.getElementById('scriptUrl').value = url;
+}
+
+async function syncToGoogleSheets(){
+  const url = document.getElementById('scriptUrl').value.trim();
+  if(!url){ showSyncStatus('Вставьте URL скрипта!', 'err'); return; }
+
+  const btn = document.getElementById('syncBtn');
+  btn.classList.add('syncing');
+  btn.textContent = '⏳ ОТПРАВКА...';
+  showSyncStatus('Подключаюсь...', '');
+
+  const dates = getWeekDates(currentWeekOffset);
+  const dateKeys = dates.map(d => dateKey(d));
+  const dateLabels = dates.map(d => {
+    return d.getDate()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear();
+  });
+
+  const payload = {
+    action: 'syncAll',
+    weekLabel: shortDate(dates[6]),
+    dates: dateKeys,
+    dateLabels: dateLabels,
+    sellers: SELLERS.map(s=>({id:s.id, name:s.name})),
+    sales: getSales(),
+    zp: getZp(),
+    klik: getKlik(),
+    exp: getExp(),
+  };
+
+  // Apps Script не поддерживает CORS напрямую, используем no-cors через form trick
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+      mode: 'no-cors'
+    });
+    showSyncStatus('✅ Данные отправлены в Google Таблицу!', 'ok');
+  } catch(e) {
+    showSyncStatus('❌ Ошибка: ' + e.message, 'err');
+  }
+
+  btn.classList.remove('syncing');
+  btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14.93-2M20 15a8 8 0 0 1-14.93 2"/></svg> СИНХРОНИЗИРОВАТЬ';
+}
+
+function showSyncStatus(msg, cls){
+  const el = document.getElementById('syncStatus');
+  el.textContent = msg;
+  el.className = 'sync-status' + (cls ? ' '+cls : '');
+}
+
+// ══ INIT ══
+function renderAll(){updateWeekLabel();renderReport();loadScriptUrl();loadTgSettings();}
+renderAll();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body>
+</html>
