@@ -1,366 +1,262 @@
 // ═══════════════════════════════════════════════════════════
 // GOOGLE APPS SCRIPT — Отчет Продаж PWA
-// Вставьте этот код в Google Apps Script вашей таблицы
+// Вставьте этот код в Apps Script вашей Google Таблицы
+// Развернуть → Веб-приложение → Доступ: Все
 // ═══════════════════════════════════════════════════════════
 
-const SHEET_SALES  = 'НЕДЕЛЬНЫЙ ОТЧЕТ ПРОДАЖ';
-const SHEET_RASXOD = 'НЕДЕЛЬНЫЙ ОТЧЕТ РАСХОДОВ';
+const SHEET_SALES  = 'ПРОДАЖИ';
+const SHEET_RASXOD = 'РАСХОДЫ';
 const SHEET_KLIK   = 'КЛИК';
+const SHEET_DB     = '_DB'; // скрытый лист для хранения данных
 
-// ── Точка входа для POST запросов из PWA ──
+// ── GET: восстановление данных в PWA ──
+function doGet(e) {
+  const action = e.parameter.action || '';
+  if (action === 'getData') {
+    const data = loadFromDB();
+    return json({ok: true, data});
+  }
+  return json({ok: true, message: 'Скрипт работает!'});
+}
+
+// ── POST: сохранение из PWA ──
 function doPost(e) {
   try {
-    const data = JSON.parse(e.postData.contents);
-    const action = data.action;
-
-    if (action === 'syncAll') {
-      syncSalesSheet(data);
-      syncRasxodSheet(data);
-      syncKlikSheet(data);
+    const raw = e.postData ? e.postData.contents : '{}';
+    const data = JSON.parse(raw);
+    if (data.action === 'syncAll') {
+      saveToDBSheet(data);   // сохранить сырые данные (для восстановления)
+      syncSalesSheet(data);  // красивая таблица продаж
+      syncRasxodSheet(data); // таблица расходов
+      syncKlikSheet(data);   // таблица клик
     }
-
-    return ContentService
-      .createTextOutput(JSON.stringify({ok: true}))
-      .setMimeType(ContentService.MimeType.JSON);
+    return json({ok: true});
   } catch(err) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ok: false, error: err.message}))
-      .setMimeType(ContentService.MimeType.JSON);
+    return json({ok: false, error: err.toString()});
   }
 }
 
-// ── Точка входа для GET (тест) ──
-function doGet(e) {
-  return ContentService
-    .createTextOutput(JSON.stringify({ok: true, message: 'Script работает!'}))
-    .setMimeType(ContentService.MimeType.JSON);
+// ── Сохранить сырые данные на лист _DB ──
+function saveToDBSheet(data) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_DB);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_DB);
+    sheet.hideSheet();
+  }
+  sheet.clearContents();
+  // Сохраняем как JSON в ячейку A1
+  sheet.getRange(1,1).setValue(JSON.stringify({
+    sales: data.sales || {},
+    zp:    data.zp    || {},
+    klik:  data.klik  || {},
+    exp:   data.exp   || {},
+    saved: new Date().toISOString()
+  }));
+}
+
+// ── Загрузить данные из _DB ──
+function loadFromDB() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_DB);
+  if (!sheet) return {};
+  try {
+    return JSON.parse(sheet.getRange(1,1).getValue() || '{}');
+  } catch(e) { return {}; }
 }
 
 // ════════════════════════════════════════
-// ЛИСТ 1: НЕДЕЛЬНЫЙ ОТЧЕТ ПРОДАЖ
-// Структура как на скриншоте Image 3
+// ЛИСТ: ПРОДАЖИ
 // ════════════════════════════════════════
 function syncSalesSheet(data) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_SALES);
-  if (!sheet) sheet = ss.insertSheet(SHEET_SALES);
-  sheet.clearContents();
+  let sh = ss.getSheetByName(SHEET_SALES);
+  if (!sh) sh = ss.insertSheet(SHEET_SALES);
+  sh.clearContents(); sh.clearFormats();
 
-  const dates = data.dates; // массив строк "19.05.2026"
-  const sellers = data.sellers; // [{id, name}]
-  const salesData = data.sales;   // {dateKey: {sellerId: {palichki}}}
-  const zpData = data.zp;         // {dateKey: {sellerId: {zarplata, pulkira}}}
-  const klikData = data.klik;     // {dateKey: {sellerId: [...]}}
-  const expData = data.exp;       // {dateKey: {zel, pak, ...}}
-  const weekLabel = data.weekLabel; // "25.05.2026"
+  const dates = data.dates || [];
+  const dl    = data.dateLabels || dates;
+  const sel   = data.sellers || [];
+  const S = data.sales || {}, Z = data.zp || {}, K = data.klik || {}, E = data.exp || {};
+  const EF = ['zel','pak','obed','gel','ubork','sul','prochie'];
 
-  // ── Заголовок ──
-  sheet.getRange(1, 1).setValue('НЕДЕЛЬНЫЙ ОТЧЕТ ПРОДАЖ ' + weekLabel);
-  sheet.getRange(1, 1, 1, 10).merge();
-  styleHeader(sheet.getRange(1, 1), '#1a6b3a', '#ffffff', 14, true);
+  let r = 1;
+  // Заголовок
+  row(sh, r, ['НЕДЕЛЬНЫЙ ОТЧЕТ ПРОДАЖ ' + (data.weekLabel||'')], '#1a6b3a','#fff',13,true);
+  sh.getRange(r,1,1,dates.length+2).merge(); r++;
 
-  // ── Строка 2: "Продажа" + даты ──
-  const headerRow = ['Продажа'];
-  dates.forEach(d => headerRow.push(d));
-  headerRow.push('');
-  headerRow.push('НЕДЕЛЯ ОБЩ');
-  sheet.getRange(2, 1, 1, headerRow.length).setValues([headerRow]);
-  styleHeader(sheet.getRange(2, 1, 1, headerRow.length), '#1a6b3a', '#ffffff', 10, true);
+  // Шапка дат
+  row(sh, r, ['Продажа'].concat(dl).concat(['','ОБЩ']), '#1a6b3a','#fff',9,true); r++;
 
-  // ── Строка 3: имена продавцов под датами ──
-  const sellerRow = [''];
-  dates.forEach(() => sellerRow.push('Таня'));
-  sellerRow.push('');
-  sellerRow.push('');
-  sheet.getRange(3, 1, 1, sellerRow.length).setValues([sellerRow]);
-  styleHeader(sheet.getRange(3, 1, 1, sellerRow.length), '#2d6a4f', '#ffffff', 9, false);
-
-  let row = 4;
-
-  // ── Палички (Нахт) ──
-  const palRow = ['Палички'];
-  let totPal = 0;
-  dates.forEach(dk => {
-    let daySum = 0;
-    sellers.forEach(s => { daySum += Number(((salesData[dk]||{})[s.id]||{}).palichki||0); });
-    palRow.push(daySum);
-    totPal += daySum;
+  // По каждому продавцу
+  let totPal=0, totKl=0, totZP=0, totPul=0;
+  sel.forEach(s => {
+    const pv = dates.map(dk => n(((S[dk]||{})[s.id]||{}).nalichka));
+    const kv = dates.map(dk => { const a=((K[dk]||{})[s.id])||[]; return a.reduce((x,y)=>x+n(y),0); });
+    const tp = sum(pv), tk = sum(kv);
+    totPal+=tp; totKl+=tk;
+    row(sh, r, [s.name+' Наличка'].concat(pv).concat(['',tp]), null,null,10,false);
+    fmtNums(sh,r,dates.length+2); r++;
+    row(sh, r, ['  Клик'].concat(kv).concat(['',tk]), null,null,10,false);
+    fmtNums(sh,r,dates.length+2); r++;
   });
-  palRow.push('');
-  palRow.push(totPal);
-  sheet.getRange(row, 1, 1, palRow.length).setValues([palRow]);
-  formatNumberRow(sheet, row, palRow.length);
-  row++;
-
-  // ── Клик ──
-  const klRow = ['Клик'];
-  let totKl = 0;
-  dates.forEach(dk => {
-    let daySum = 0;
-    sellers.forEach(s => {
-      const arr = ((klikData[dk]||{})[s.id])||[];
-      daySum += arr.reduce((a,b) => a+(Number(b)||0), 0);
-    });
-    klRow.push(daySum);
-    totKl += daySum;
+  // Итого касса
+  const kassaDay = dates.map(dk => {
+    let v=0; sel.forEach(s=>{
+      v+=n(((S[dk]||{})[s.id]||{}).nalichka);
+      ((K[dk]||{})[s.id]||[]).forEach(x=>v+=n(x));
+    }); return v;
   });
-  klRow.push('');
-  klRow.push(totKl);
-  sheet.getRange(row, 1, 1, klRow.length).setValues([klRow]);
-  formatNumberRow(sheet, row, klRow.length);
-  row++;
+  row(sh, r, ['КАССА'].concat(kassaDay).concat(['',sum(kassaDay)]), '#e8f5e9','#000',10,true);
+  fmtNums(sh,r,dates.length+2); r++;
 
-  // ── Итого Касса ──
-  const kassaRow = [''];
-  let totKassa = 0;
-  dates.forEach((dk, i) => {
-    const v = (palRow[i+1]||0) + (klRow[i+1]||0);
-    kassaRow.push(v);
-    totKassa += v;
+  // Расходы
+  cell(sh,r,1,'Расходы','#c0392b','#fff',10,true,'center');
+  sh.getRange(r,1,1,dates.length+2).merge(); r++;
+
+  sel.forEach(s => {
+    const zv = dates.map(dk => n(((Z[dk]||{})[s.id]||{}).zarplata));
+    const pv = dates.map(dk => n(((Z[dk]||{})[s.id]||{}).pulkira));
+    const tz=sum(zv),tp=sum(pv);
+    totZP+=tz; totPul+=tp;
+    row(sh,r,[s.name+' ЗП'].concat(zv).concat(['',tz]),null,null,10,false);
+    fmtNums(sh,r,dates.length+2); r++;
+    row(sh,r,['  Йулкира'].concat(pv).concat(['',tp]),null,null,10,false);
+    fmtNums(sh,r,dates.length+2); r++;
   });
-  kassaRow.push('');
-  kassaRow.push(totKassa);
-  sheet.getRange(row, 1, 1, kassaRow.length).setValues([kassaRow]);
-  formatNumberRow(sheet, row, kassaRow.length);
-  row++;
 
-  // ── РАСХОДИ заголовок ──
-  sheet.getRange(row, 1).setValue('Расходы');
-  sheet.getRange(row, 1, 1, dates.length+2).merge();
-  styleHeader(sheet.getRange(row, 1), '#c0392b', '#ffffff', 10, true);
-  row++;
-
-  // ── Зарплата ──
-  const zpRow = ['Зарплата'];
-  let totZP = 0;
-  dates.forEach(dk => {
-    let daySum = 0;
-    sellers.forEach(s => { daySum += Number(((zpData[dk]||{})[s.id]||{}).zarplata||0); });
-    zpRow.push(daySum);
-    totZP += daySum;
+  // Прочие расходы
+  let totMisc=0;
+  const miscDay=new Array(dates.length).fill(0);
+  EF.forEach(f => {
+    dates.forEach((dk,i)=>{ const v=n((E[dk]||{})[f]); miscDay[i]+=v; totMisc+=v; });
   });
-  zpRow.push('');
-  zpRow.push(totZP);
-  sheet.getRange(row, 1, 1, zpRow.length).setValues([zpRow]);
-  formatNumberRow(sheet, row, zpRow.length);
-  row++;
+  row(sh,r,['Прочие расходы'].concat(miscDay).concat(['',totMisc]),null,null,10,false);
+  fmtNums(sh,r,dates.length+2); r++;
 
-  // ── Пулкира ──
-  const pulRow = ['Йулкира'];
-  let totPul = 0;
-  dates.forEach(dk => {
-    let daySum = 0;
-    sellers.forEach(s => { daySum += Number(((zpData[dk]||{})[s.id]||{}).pulkira||0); });
-    pulRow.push(daySum);
-    totPul += daySum;
-  });
-  pulRow.push('');
-  pulRow.push(totPul);
-  sheet.getRange(row, 1, 1, pulRow.length).setValues([pulRow]);
-  formatNumberRow(sheet, row, pulRow.length);
-  row++;
+  r++; // пустая
 
-  // ── Прочие расходы итого ──
-  const miscRow = ['Прочие расходы'];
-  let totMisc = 0;
-  const EXP_FIELDS = ['zel','pak','obed','gel','ubork','sul'];
-  dates.forEach(dk => {
-    let daySum = 0;
-    EXP_FIELDS.forEach(f => { daySum += Number((expData[dk]||{})[f]||0); });
-    miscRow.push(daySum);
-    totMisc += daySum;
-  });
-  miscRow.push('');
-  miscRow.push(totMisc);
-  sheet.getRange(row, 1, 1, miscRow.length).setValues([miscRow]);
-  formatNumberRow(sheet, row, miscRow.length);
-  row++;
+  // Общая касса
+  const obshDay=kassaDay.map((v,i)=>v+miscDay[i]);
+  row(sh,r,['Общая касса'].concat(obshDay).concat(['',sum(obshDay)]),'#1a6b3a','#fff',10,true);
+  fmtNums(sh,r,dates.length+2); r++;
 
-  // ── Пустая строка ──
-  row++;
+  // Наличка колди
+  const palDay=dates.map(dk=>{let v=0;sel.forEach(s=>v+=n(((S[dk]||{})[s.id]||{}).nalichka));return v;});
+  const zpDay=dates.map(dk=>{let v=0;sel.forEach(s=>v+=n(((Z[dk]||{})[s.id]||{}).zarplata)+n(((Z[dk]||{})[s.id]||{}).pulkira));return v;});
+  const nahtDay=palDay.map((v,i)=>v-zpDay[i]);
+  row(sh,r,['Наличка колди'].concat(nahtDay).concat(['',sum(nahtDay)]),'#155724','#fff',10,true);
+  fmtNums(sh,r,dates.length+2);
 
-  // ── Общая касса ──
-  const obshRow = ['Общая касса'];
-  let totObsh = 0;
-  dates.forEach((dk, i) => {
-    const v = (kassaRow[i+1]||0) + (miscRow[i+1]||0);
-    obshRow.push(v);
-    totObsh += v;
-  });
-  obshRow.push('');
-  obshRow.push(totObsh);
-  sheet.getRange(row, 1, 1, obshRow.length).setValues([obshRow]);
-  formatNumberRow(sheet, row, obshRow.length);
-  styleHeader(sheet.getRange(row, 1, 1, obshRow.length), '#1a6b3a', '#ffffff', 10, true);
-  row++;
-
-  // ── Нахт колди ──
-  const nahtRow = ['Нахт колди'];
-  let totNaht = 0;
-  dates.forEach((dk, i) => {
-    const pal = palRow[i+1]||0;
-    const zp  = zpRow[i+1]||0;
-    const pul = pulRow[i+1]||0;
-    const v   = pal - (zp + pul);
-    nahtRow.push(v);
-    totNaht += v;
-  });
-  nahtRow.push('');
-  nahtRow.push(totNaht);
-  sheet.getRange(row, 1, 1, nahtRow.length).setValues([nahtRow]);
-  formatNumberRow(sheet, row, nahtRow.length);
-  styleHeader(sheet.getRange(row, 1, 1, nahtRow.length), '#155724', '#ffffff', 10, true);
-
-  // ── Ширина колонок ──
-  sheet.setColumnWidth(1, 160);
-  for (let c = 2; c <= dates.length+1; c++) sheet.setColumnWidth(c, 90);
-  sheet.setColumnWidth(dates.length+3, 100);
+  // Ширина
+  sh.setColumnWidth(1,150);
+  for(let c=2;c<=dates.length+1;c++) sh.setColumnWidth(c,90);
+  sh.setColumnWidth(dates.length+3,110);
 }
 
 // ════════════════════════════════════════
-// ЛИСТ 2: НЕДЕЛЬНЫЙ ОТЧЕТ РАСХОДОВ
-// Структура как на скриншоте Image 1
+// ЛИСТ: РАСХОДЫ
 // ════════════════════════════════════════
 function syncRasxodSheet(data) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_RASXOD);
-  if (!sheet) sheet = ss.insertSheet(SHEET_RASXOD);
-  sheet.clearContents();
+  let sh = ss.getSheetByName(SHEET_RASXOD);
+  if (!sh) sh = ss.insertSheet(SHEET_RASXOD);
+  sh.clearContents(); sh.clearFormats();
 
-  const dates = data.dates;
-  const expData = data.exp;
-  const weekLabel = data.weekLabel;
-  const EXP_CATS = [
-    ['Зелень/Соль/Соя', 'zel'],
-    ['Пакет/Салфетки', 'pak'],
-    ['Обед/Кофе/Хлеб', 'obed'],
-    ['Гель/Азелит/Марля', 'gel'],
-    ['Уборка/Лампочка/Ремонт', 'ubork'],
-    ['Сул/Муз', 'sul'],
-  ];
+  const dates=data.dates||[], dl=data.dateLabels||dates, E=data.exp||{};
+  const CATS=[['Зелень/Соль/Соя','zel'],['Пакет/Салфетки','pak'],['Обед/Кофе/Хлеб','obed'],
+    ['Гель/Азелит/Марля','gel'],['Уборка/Лампочка/Рем','ubork'],['Сул/Муз','sul'],['Прочие','prochie']];
 
-  // Заголовок
-  sheet.getRange(1, 1).setValue('НЕДЕЛЬНЫЙ ОТЧЕТ РАСХОДОВ ' + weekLabel);
-  sheet.getRange(1, 1, 1, dates.length+2).merge();
-  styleHeader(sheet.getRange(1, 1), '#1a6b3a', '#ffffff', 14, true);
+  let r=1;
+  row(sh,r,['НЕДЕЛЬНЫЙ ОТЧЕТ РАСХОДОВ '+(data.weekLabel||'')],'#1a6b3a','#fff',13,true);
+  sh.getRange(r,1,1,dates.length+2).merge(); r++;
+  row(sh,r,['Расход'].concat(dl).concat(['','ОБЩ']),'#1a6b3a','#fff',9,true); r++;
 
-  // Строка 2: Расход + даты
-  const hdr = ['Расход'].concat(dates).concat(['', 'НЕДЕЛЯ ОБЩ']);
-  sheet.getRange(2, 1, 1, hdr.length).setValues([hdr]);
-  styleHeader(sheet.getRange(2, 1, 1, hdr.length), '#1a6b3a', '#ffffff', 10, true);
-
-  // Строка 3: Таня под датами (как в оригинале)
-  const tRow = [''].concat(dates.map(() => 'Таня')).concat(['', '']);
-  sheet.getRange(3, 1, 1, tRow.length).setValues([tRow]);
-  styleHeader(sheet.getRange(3, 1, 1, tRow.length), '#2d6a4f', '#ffffff', 9, false);
-
-  let row = 4;
-  const dayTotals = new Array(dates.length).fill(0);
-
-  EXP_CATS.forEach(([label, field]) => {
-    const dataRow = [label];
-    let rowTotal = 0;
-    dates.forEach((dk, i) => {
-      const v = Number((expData[dk]||{})[field]||0);
-      dataRow.push(v);
-      dayTotals[i] += v;
-      rowTotal += v;
-    });
-    dataRow.push('');
-    dataRow.push(rowTotal);
-    sheet.getRange(row, 1, 1, dataRow.length).setValues([dataRow]);
-    formatNumberRow(sheet, row, dataRow.length);
-    row++;
+  const dayTot=new Array(dates.length).fill(0);
+  CATS.forEach(([label,field])=>{
+    const vals=dates.map((dk,i)=>{const v=n((E[dk]||{})[field]);dayTot[i]+=v;return v;});
+    row(sh,r,[label].concat(vals).concat(['',sum(vals)]),null,null,10,false);
+    fmtNums(sh,r,dates.length+2); r++;
   });
+  row(sh,r,['ИТОГО'].concat(dayTot).concat(['',sum(dayTot)]),'#1a6b3a','#fff',10,true);
+  fmtNums(sh,r,dates.length+2);
 
-  // Итого строка
-  const totRow = ['Сум/Муз'].concat(dayTotals).concat(['', dayTotals.reduce((a,b)=>a+b,0)]);
-  sheet.getRange(row, 1, 1, totRow.length).setValues([totRow]);
-  formatNumberRow(sheet, row, totRow.length);
-  styleHeader(sheet.getRange(row, 1, 1, totRow.length), '#1a6b3a', '#ffffff', 10, true);
-
-  sheet.setColumnWidth(1, 180);
-  for (let c = 2; c <= dates.length+1; c++) sheet.setColumnWidth(c, 90);
-  sheet.setColumnWidth(dates.length+3, 100);
+  sh.setColumnWidth(1,180);
+  for(let c=2;c<=dates.length+1;c++) sh.setColumnWidth(c,90);
+  sh.setColumnWidth(dates.length+3,110);
 }
 
 // ════════════════════════════════════════
-// ЛИСТ 3: КЛИК (как Image 2)
+// ЛИСТ: КЛИК
 // ════════════════════════════════════════
 function syncKlikSheet(data) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_KLIK);
-  if (!sheet) sheet = ss.insertSheet(SHEET_KLIK);
-  sheet.clearContents();
+  let sh = ss.getSheetByName(SHEET_KLIK);
+  if (!sh) sh = ss.insertSheet(SHEET_KLIK);
+  sh.clearContents(); sh.clearFormats();
 
-  const dates = data.dates;
-  const klikData = data.klik;
-  const sellers = data.sellers;
+  const dates=data.dates||[], dl=data.dateLabels||dates;
+  const sel=data.sellers||[], K=data.klik||{};
 
-  // Заголовок с датами
-  const hdr = [''].concat(dates);
-  sheet.getRange(1, 1, 1, hdr.length).setValues([hdr]);
-  styleHeader(sheet.getRange(1, 1, 1, hdr.length), '#1a6b3a', '#ffffff', 10, true);
+  let r=1;
+  row(sh,r,[''].concat(dl),'#1a6b3a','#fff',9,true); r++;
 
-  let row = 2;
-  const dayTotals = new Array(dates.length).fill(0);
-  const allDayRows = {}; // dateKey -> all values
-
-  // Собрать все значения по датам
-  dates.forEach(dk => { allDayRows[dk] = []; });
-  sellers.forEach(s => {
-    dates.forEach(dk => {
-      const arr = ((klikData[dk]||{})[s.id])||[];
-      arr.forEach(v => { if(v>0) allDayRows[dk].push(Number(v)); });
+  const byDate={};
+  dates.forEach(dk=>byDate[dk]=[]);
+  sel.forEach(s=>{
+    dates.forEach(dk=>{
+      ((K[dk]||{})[s.id]||[]).forEach(v=>{if(n(v)>0)byDate[dk].push(n(v));});
     });
   });
 
-  // Найти макс количество строк
-  let maxRows = 1;
-  dates.forEach(dk => { if(allDayRows[dk].length > maxRows) maxRows = allDayRows[dk].length; });
+  let maxR=1;
+  dates.forEach(dk=>{if(byDate[dk].length>maxR)maxR=byDate[dk].length;});
+  const dayTot=new Array(dates.length).fill(0);
 
-  for (let r = 0; r < maxRows; r++) {
-    const dataRow = [''];
-    dates.forEach(dk => {
-      const v = allDayRows[dk][r] || '';
-      dataRow.push(v);
-      if(v) dayTotals[dates.indexOf(dk)] += Number(v);
-    });
-    sheet.getRange(row, 1, 1, dataRow.length).setValues([dataRow]);
-    if(r < maxRows-1) formatNumberRow(sheet, row, dataRow.length);
-    row++;
+  for(let i=0;i<maxR;i++){
+    const vals=[''];
+    dates.forEach((dk,di)=>{const v=byDate[dk][i]||'';if(v)dayTot[di]+=v;vals.push(v);});
+    sh.getRange(r,1,1,vals.length).setValues([vals]); r++;
   }
-
-  // Пустая строка
-  row++;
-
-  // Итого
-  const totRow = ['Итого'].concat(dayTotals);
-  sheet.getRange(row, 1, 1, totRow.length).setValues([totRow]);
-  formatNumberRow(sheet, row, totRow.length);
-  styleHeader(sheet.getRange(row, 1, 1, totRow.length), '#1a6b3a', '#ffffff', 10, true);
-
-  for (let c = 1; c <= dates.length+1; c++) sheet.setColumnWidth(c, 90);
+  r++;
+  row(sh,r,['ИТОГО'].concat(dayTot),'#1a6b3a','#fff',10,true);
+  fmtNums(sh,r,dates.length+1);
+  for(let c=1;c<=dates.length+1;c++) sh.setColumnWidth(c,90);
 }
 
 // ════════════════════════════════════════
 // HELPERS
 // ════════════════════════════════════════
-function styleHeader(range, bg, fg, fontSize, bold) {
-  range.setBackground(bg)
-       .setFontColor(fg)
-       .setFontSize(fontSize)
-       .setFontWeight(bold ? 'bold' : 'normal')
-       .setHorizontalAlignment('center');
+function n(v){return Number(v)||0;}
+function sum(arr){return arr.reduce((a,b)=>a+b,0);}
+function json(obj){return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);}
+
+function cell(sh,r,c,val,bg,fg,sz,bold,align){
+  const cl=sh.getRange(r,c);
+  cl.setValue(val);
+  if(bg)cl.setBackground(bg);
+  if(fg)cl.setFontColor(fg);
+  if(sz)cl.setFontSize(sz);
+  cl.setFontWeight(bold?'bold':'normal');
+  if(align)cl.setHorizontalAlignment(align);
 }
 
-function formatNumberRow(sheet, row, len) {
-  for (let c = 2; c <= len; c++) {
-    const cell = sheet.getRange(row, c);
-    const v = cell.getValue();
-    if (typeof v === 'number' && v !== 0) {
-      cell.setNumberFormat('#,##0');
+function row(sh,r,vals,bg,fg,sz,bold){
+  const range=sh.getRange(r,1,1,vals.length);
+  range.setValues([vals]);
+  if(bg)range.setBackground(bg);
+  if(fg)range.setFontColor(fg);
+  if(sz)range.setFontSize(sz);
+  range.setFontWeight(bold?'bold':'normal');
+}
+
+function fmtNums(sh,r,last){
+  for(let c=2;c<=last;c++){
+    const cl=sh.getRange(r,c);
+    const v=cl.getValue();
+    if(typeof v==='number'&&v!==0){
+      cl.setNumberFormat('#,##0');
+      cl.setHorizontalAlignment('right');
     }
   }
-  sheet.getRange(row, 1).setFontSize(10);
 }

@@ -1,1171 +1,1716 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0f1117">
+<meta name="theme-color" content="#0d1117" id="themeColor">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Отчет">
+<meta name="apple-mobile-web-app-title" content="Ҳисобот">
 <link rel="manifest" href="manifest.json">
-<title>Недельный Отчет</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<title>Ҳисобот</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0f1117;--surface:#161b27;--surface2:#1e2535;--border:#2a3347;
-  --green:#22c55e;--green-dim:#16a34a;--green-glow:rgba(34,197,94,0.12);
-  --red:#ef4444;--red-dim:#dc2626;--amber:#f59e0b;--blue:#3b82f6;
-  --purple:#a855f7;--teal:#14b8a6;
-  --text:#f0f4ff;--muted:#8896b0;--tab-h:60px;--header-h:56px;
-}
-html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;-webkit-font-smoothing:antialiased}
+[data-theme="dark"]{--bg:#0d1117;--sf:#161b27;--sf2:#1e2636;--bd:#252d3d;--tx:#eef2ff;--mt:#64748b}
+[data-theme="light"]{--bg:#f1f5f9;--sf:#ffffff;--sf2:#f8fafc;--bd:#e2e8f0;--tx:#0f172a;--mt:#94a3b8}
+:root{--gr:#22c55e;--rd:#ef4444;--am:#f59e0b;--bl:#3b82f6;--pu:#a855f7;--tl:#14b8a6;--th:62px}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:'Manrope',sans-serif;-webkit-font-smoothing:antialiased}
 #app{display:flex;flex-direction:column;height:100dvh}
-header{height:var(--header-h);display:flex;align-items:center;justify-content:space-between;
-  padding:0 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10}
-.logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--green)}
-.week-label{font-size:9px;color:var(--muted);font-weight:700;letter-spacing:1px}
-.week-nav{display:flex;align-items:center;gap:5px}
-.week-nav button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--text);font-size:16px;cursor:pointer;
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
+  background:var(--sf);border-bottom:1px solid var(--bd);flex-shrink:0}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--gr)}
+.wchip{display:flex;align-items:center;gap:4px}
+.wchip button{width:28px;height:28px;border-radius:7px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--tx);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.wchip span{font-size:10px;font-weight:700;color:var(--mt);min-width:82px;text-align:center}
+.hbtns{display:flex;gap:5px;align-items:center}
+.ibtn{width:32px;height:32px;border-radius:8px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--mt);font-size:15px;cursor:pointer;
   display:flex;align-items:center;justify-content:center}
-.week-range{font-size:10px;color:var(--muted);font-weight:700;white-space:nowrap}
-nav{display:flex;height:var(--tab-h);background:var(--surface);border-top:1px solid var(--border);flex-shrink:0}
-nav button{flex:1;border:none;background:none;color:var(--muted);font-family:'Manrope',sans-serif;
-  font-size:8px;font-weight:700;letter-spacing:0.3px;cursor:pointer;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  padding-bottom:env(safe-area-inset-bottom,0)}
-nav button .icon{font-size:17px}
-nav button.active{color:var(--green)}
+.cdot{width:8px;height:8px;border-radius:50%;background:var(--mt);transition:background .3s}
+.cdot.ok{background:var(--gr);box-shadow:0 0 6px var(--gr)}
+.cdot.err{background:var(--rd)}
+.cdot.spin{background:var(--am);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.cinfo{font-size:9px;color:var(--mt);font-weight:600}
 main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
-.page{display:none;padding:11px 11px 24px}
+.page{display:none;padding:12px 12px 20px;animation:fadeIn .18s ease}
 .page.active{display:block}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:13px;margin-bottom:10px}
-.card-title{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
-/* summary grid */
-.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-.stat-box{background:var(--surface2);border-radius:11px;padding:12px 10px;border:1px solid var(--border)}
-.stat-box.green{border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.07)}
-.stat-box.red{border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.07)}
-.stat-box.amber{border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.07)}
-.stat-box.blue{border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.07)}
-.stat-label{font-size:9px;color:var(--muted);font-weight:700;margin-bottom:2px}
-.stat-value{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;line-height:1}
-.stat-value.green{color:var(--green)}.stat-value.red{color:var(--red)}
-.stat-value.amber{color:var(--amber)}.stat-value.blue{color:var(--blue)}
-.stat-sub{font-size:8px;color:var(--muted);margin-top:2px}
-/* day table */
-.day-table{width:100%;border-collapse:collapse;font-size:10px}
-.day-table th{padding:4px 2px;font-size:8px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);text-align:center}
-.day-table th:first-child{text-align:left}
-.day-table td{padding:6px 2px;border-bottom:1px solid rgba(42,51,71,0.4);text-align:right;font-variant-numeric:tabular-nums}
-.day-table td:first-child{text-align:left;color:var(--muted);font-size:9px;padding-right:3px}
-.day-table .tr-total td{font-weight:800;border-top:1px solid var(--border);padding-top:8px;color:var(--green)}
-.day-table .tr-red td{color:var(--red)}
-.day-table .tr-amber td{color:var(--amber)}
-.today-col{background:rgba(34,197,94,0.07)}
-/* form */
-.form-section{margin-bottom:14px}
-.form-section-title{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);
-  text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
-.form-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(42,51,71,0.35)}
-.form-row:last-child{border-bottom:none}
-.form-label{flex:1;font-size:12px;color:var(--text)}
-.form-input{width:110px;padding:7px 9px;border-radius:8px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--text);font-family:'Manrope',sans-serif;
-  font-size:12px;font-weight:600;text-align:right;outline:none;-webkit-appearance:none}
-.form-input:focus{border-color:var(--green)}
-.date-selector{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;scrollbar-width:none}
-.date-selector::-webkit-scrollbar{display:none}
-.date-btn{flex-shrink:0;padding:5px 10px;border-radius:18px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer}
-.date-btn.active{background:var(--green);border-color:var(--green);color:#000}
-/* seller tabs */
-.seller-tabs{display:flex;gap:6px;margin-bottom:12px}
-.seller-tab{flex:1;padding:8px 4px;border-radius:9px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;text-align:center}
-.seller-tab.active-tanya{background:rgba(168,85,247,0.15);border-color:var(--purple);color:var(--purple)}
-.seller-tab.active-sveta{background:rgba(20,184,166,0.15);border-color:var(--teal);color:var(--teal)}
-.seller-tab.active-dilnoza{background:rgba(245,158,11,0.15);border-color:var(--amber);color:var(--amber)}
-.seller-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
-.badge-tanya{background:rgba(168,85,247,0.2);color:var(--purple)}
-.badge-sveta{background:rgba(20,184,166,0.2);color:var(--teal)}
-.badge-dilnoza{background:rgba(245,158,11,0.2);color:var(--amber)}
-/* save/tg buttons */
-.save-btn{width:100%;padding:13px;border-radius:11px;border:none;background:var(--green);color:#000;
-  font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;cursor:pointer;margin-top:7px}
-.save-btn:active{opacity:0.8}
-.tg-btn{width:100%;padding:13px;border-radius:11px;border:none;
-  background:linear-gradient(135deg,#229ED9,#1a7fc4);color:#fff;
-  font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1.5px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:8px}
-.tg-btn:active{opacity:0.85}
-.tg-btn svg{width:20px;height:20px;fill:#fff;flex-shrink:0}
-/* klik */
-.klik-input{display:flex;flex-direction:column;gap:6px}
-.klik-row{display:flex;gap:7px;align-items:center}
-.klik-row input{flex:1;padding:8px 9px;border-radius:8px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--text);font-family:'Manrope',sans-serif;
-  font-size:12px;font-weight:600;outline:none;text-align:right;-webkit-appearance:none}
-.klik-row input:focus{border-color:var(--blue)}
-.remove-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--red);font-size:15px;cursor:pointer;flex-shrink:0}
-/* profit bar */
-.profit-bar-label{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:3px}
-.profit-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
-.profit-bar-fill{height:100%;background:linear-gradient(90deg,var(--green),#86efac);border-radius:2px;transition:width 0.5s}
-/* daily report card */
-.daily-card{background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:12px;margin-bottom:9px}
-.daily-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
-.daily-card-name{font-size:14px;font-weight:800}
-.daily-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(42,51,71,0.4);font-size:12px}
-.daily-row:last-child{border-bottom:none}
-.daily-row .lbl{color:var(--muted)}
-.daily-row .val{font-weight:700;font-variant-numeric:tabular-nums}
-.daily-row.total{background:var(--green-glow);border-radius:7px;padding:6px 7px;margin-top:3px}
-.daily-row.total .lbl{color:var(--text);font-weight:700}
-.daily-row.total .val{color:var(--green);font-size:13px}
-.daily-row.naht{background:rgba(34,197,94,0.18);border-radius:7px;padding:6px 7px}
-.daily-row.naht .lbl{color:var(--text);font-weight:800}
-.daily-row.naht .val{color:var(--green);font-size:14px;font-family:'Bebas Neue',sans-serif;letter-spacing:1px}
-.daily-sep{height:1px;background:var(--border);margin:8px 0}
-/* day-picker for daily report */
-.day-picker{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;margin-bottom:11px;scrollbar-width:none}
-.day-picker::-webkit-scrollbar{display:none}
-.day-btn{flex-shrink:0;padding:5px 10px;border-radius:18px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer}
-.day-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
-/* sync */
-.sync-btn{width:100%;padding:13px;border-radius:11px;border:none;
-  background:linear-gradient(135deg,#34a853,#1a6b3a);color:#fff;
-  font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1.5px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px}
-.sync-btn:active{opacity:0.8}
-.sync-btn.syncing{background:linear-gradient(135deg,#f59e0b,#d97706)}
-.url-input{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--border);
-  background:var(--surface2);color:var(--text);font-family:'Manrope',sans-serif;
-  font-size:11px;outline:none;margin-bottom:8px}
-.url-input:focus{border-color:var(--green)}
-.sync-status{font-size:10px;text-align:center;margin-top:6px;min-height:16px}
-.sync-status.ok{color:var(--green)}.sync-status.err{color:var(--red)}
-/* swipe dots */
-.swipe-dots{display:flex;justify-content:center;gap:5px;padding:4px 0 2px;background:var(--surface);flex-shrink:0}
-.swipe-dot{width:5px;height:5px;border-radius:50%;background:var(--border);transition:all 0.2s}
-.swipe-dot.active{width:16px;border-radius:3px;background:var(--green)}
-/* toast */
-.toast{position:fixed;bottom:calc(var(--tab-h) + 12px);left:50%;transform:translateX(-50%);
-  background:var(--green);color:#000;padding:9px 18px;border-radius:18px;
-  font-size:11px;font-weight:700;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap}
+@keyframes fadeIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+.dots{display:flex;justify-content:center;gap:5px;padding:5px 0 3px;background:var(--sf);flex-shrink:0}
+.dot{width:5px;height:5px;border-radius:3px;background:var(--bd);transition:all .25s}
+.dot.on{width:18px;background:var(--gr)}
+nav{display:flex;height:var(--th);background:var(--sf);border-top:1px solid var(--bd);flex-shrink:0}
+nav button{flex:1;border:none;background:none;color:var(--mt);font-family:'Manrope',sans-serif;
+  font-size:9px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;padding-bottom:env(safe-area-inset-bottom,0)}
+nav button .ni{font-size:19px}
+nav button.on{color:var(--gr)}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:10px}
+.ctitle{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--mt);margin-bottom:10px}
+.stabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.stab{padding:9px 4px;border-radius:10px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--mt);font-size:12px;font-weight:700;cursor:pointer;text-align:center}
+.stab.t{border-color:rgba(168,85,247,.5);background:rgba(168,85,247,.12);color:var(--pu)}
+.stab.s{border-color:rgba(20,184,166,.5);background:rgba(20,184,166,.12);color:var(--tl)}
+.stab.d{border-color:rgba(245,158,11,.5);background:rgba(245,158,11,.12);color:var(--am)}
+.dpills{display:flex;gap:5px;overflow-x:auto;padding-bottom:3px;margin-bottom:12px;scrollbar-width:none}
+.dpills::-webkit-scrollbar{display:none}
+.dpill{flex-shrink:0;padding:6px 10px;border-radius:18px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--mt);font-size:10px;font-weight:700;cursor:pointer}
+.dpill.on{background:var(--gr);border-color:var(--gr);color:#000}
+.frow{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)}
+.frow:last-child{border-bottom:none}
+.flbl{flex:1;font-size:13px;color:var(--tx)}
+.finput{width:120px;padding:8px 10px;border-radius:9px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--tx);font-family:'Manrope',sans-serif;
+  font-size:13px;font-weight:700;text-align:right;outline:none;appearance:none;-webkit-appearance:none}
+.finput:focus{border-color:var(--gr)}
+.finput.ro{opacity:.45;cursor:not-allowed}
+.fsect{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;
+  color:var(--mt);padding:10px 0 5px;border-bottom:1px solid var(--bd);margin-bottom:2px}
+.tbox{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);
+  border-radius:10px;padding:10px 12px;margin:8px 0;
+  display:flex;justify-content:space-between;align-items:center}
+.tbox .tl{font-size:11px;color:var(--tx);font-weight:700}
+.tbox .tv{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--gr);letter-spacing:1px}
+.krows{display:flex;flex-direction:column;gap:6px;margin:6px 0}
+.krow{display:flex;gap:6px;align-items:center}
+.krow input{flex:1;padding:8px 10px;border-radius:9px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--tx);font-family:'Manrope',sans-serif;
+  font-size:13px;font-weight:700;outline:none;text-align:right;appearance:none;-webkit-appearance:none}
+.krow input:focus{border-color:var(--bl)}
+.kdel{width:32px;height:32px;border-radius:8px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--rd);font-size:14px;cursor:pointer;flex-shrink:0}
+.kadd{width:100%;padding:7px;border-radius:9px;border:1px dashed var(--bd);
+  background:none;color:var(--gr);font-weight:700;cursor:pointer;font-size:12px;margin-top:4px}
+.btn{width:100%;padding:14px;border-radius:12px;border:none;font-family:'Bebas Neue',sans-serif;
+  font-size:17px;letter-spacing:2px;cursor:pointer;margin-top:8px;color:#000}
+.btn:active{opacity:.8}
+.btn-gr{background:var(--gr)}
+.btn-bl{background:linear-gradient(135deg,#229ED9,#1a7fc4);color:#fff}
+.btn-rd{background:var(--rd);color:#fff}
+.btn-sy{background:linear-gradient(135deg,#34a853,#1a6b3a);color:#fff}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.sbox{border-radius:12px;padding:12px 11px;border:1px solid var(--bd);background:var(--sf2)}
+.sbox.g{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.07)}
+.sbox.a{border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.07)}
+.sbox.b{border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.07)}
+.sbox.r{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.07)}
+.slbl{font-size:9px;color:var(--mt);font-weight:700;margin-bottom:2px}
+.sval{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1}
+.sval.g{color:var(--gr)}.sval.a{color:var(--am)}.sval.b{color:var(--bl)}.sval.r{color:var(--rd)}
+.ssub{font-size:8px;color:var(--mt);margin-top:2px}
+.dcard{background:var(--sf2);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:9px}
+.dhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.dname{font-size:15px;font-weight:800}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700}
+.badge.t{background:rgba(168,85,247,.2);color:var(--pu)}
+.badge.s{background:rgba(20,184,166,.2);color:var(--tl)}
+.badge.d{background:rgba(245,158,11,.2);color:var(--am)}
+.drow{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12px}
+.drow:last-child{border-bottom:none}
+.drow .dl{color:var(--mt)}.drow .dv{font-weight:700}
+.drow.нахт{background:rgba(34,197,94,.12);border-radius:8px;padding:6px 8px;margin:3px 0}
+.drow.нахт .dl{color:var(--tx);font-weight:800}
+.drow.нахт .dv{color:var(--gr);font-size:14px;font-family:'Bebas Neue',sans-serif;letter-spacing:1px}
+.drow.tot .dl{color:var(--tx);font-weight:700}.drow.tot .dv{color:var(--bl)}
+.dsep{height:1px;background:var(--bd);margin:6px 0}
+.tbl{width:100%;border-collapse:collapse;font-size:10px}
+.tbl th{padding:4px 2px;font-size:8px;font-weight:700;color:var(--mt);border-bottom:1px solid var(--bd);text-align:center}
+.tbl th:first-child{text-align:left}
+.tbl td{padding:6px 2px;border-bottom:1px solid var(--bd);text-align:right}
+.tbl td:first-child{text-align:left;color:var(--mt);font-size:9px}
+.tbl .trg td{color:var(--gr);font-weight:800;border-top:1px solid var(--bd)}
+.tbl .trr td{color:var(--rd)}
+.tbl .tra td{color:var(--am);font-weight:700}
+.tday{background:rgba(34,197,94,.07)}
+.pblbl{display:flex;justify-content:space-between;font-size:9px;color:var(--mt);margin-bottom:3px}
+.pb{height:4px;background:var(--sf2);border-radius:2px;overflow:hidden}
+.pbf{height:100%;background:linear-gradient(90deg,var(--gr),#86efac);border-radius:2px;transition:width .5s}
+.cwrap{position:relative;height:140px;margin:4px 0}
+.cwrap canvas{width:100%;height:100%}
+.cleg{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+.cleg-i{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--mt)}
+.cleg-d{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.cmpgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.cmpbox{background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:10px}
+.cmpttl{font-size:9px;font-weight:700;color:var(--mt);margin-bottom:4px}
+.cmpval{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--tx)}
+.cmpdiff{font-size:10px;font-weight:700;margin-top:2px}
+.cmpdiff.up{color:var(--gr)}.cmpdiff.dn{color:var(--rd)}.cmpdiff.eq{color:var(--mt)}
+.brow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)}
+.brow:last-child{border-bottom:none}
+.brnk{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--mt);width:24px}
+.brnk.g1{color:#f59e0b}.brnk.g2{color:#94a3b8}.brnk.g3{color:#b45309}
+.binfo{flex:1}
+.bnm{font-size:13px;font-weight:700}
+.bsub{font-size:10px;color:var(--mt)}
+.bval{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gr)}
+.mtabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;scrollbar-width:none}
+.mtabs::-webkit-scrollbar{display:none}
+.mtab{flex-shrink:0;padding:5px 12px;border-radius:18px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--mt);font-size:10px;font-weight:700;cursor:pointer}
+.mtab.on{background:var(--gr);border-color:var(--gr);color:#000}
+.qamount{width:100%;padding:18px;border-radius:14px;border:2px solid var(--bd);
+  background:var(--sf2);color:var(--tx);font-family:'Bebas Neue',sans-serif;
+  font-size:36px;text-align:center;outline:none;letter-spacing:2px;appearance:none;-webkit-appearance:none}
+.qamount:focus{border-color:var(--gr)}
+.qtypes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.qtype{padding:12px 4px;border-radius:12px;border:2px solid var(--bd);
+  background:var(--sf2);color:var(--mt);font-size:10px;font-weight:700;cursor:pointer;text-align:center}
+.qtype .qi{font-size:20px;margin-bottom:3px}
+.qtype.on-nal{border-color:var(--gr);background:rgba(34,197,94,.12);color:var(--gr)}
+.qtype.on-kl{border-color:var(--bl);background:rgba(59,130,246,.12);color:var(--bl)}
+.qtype.on-zp{border-color:var(--rd);background:rgba(239,68,68,.12);color:var(--rd)}
+.qtype.on-pul{border-color:var(--am);background:rgba(245,158,11,.12);color:var(--am)}
+.qtype.on-exp{border-color:var(--pu);background:rgba(168,85,247,.12);color:var(--pu)}
+.qdone{width:100%;padding:18px;border-radius:14px;border:none;background:var(--bd);
+  color:var(--mt);font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;cursor:pointer}
+.qdone.active{background:var(--gr);color:#000}
+.qhist{display:flex;flex-direction:column;gap:6px}
+.qhi{display:flex;justify-content:space-between;align-items:center;
+  padding:9px 12px;background:var(--sf2);border-radius:10px}
+.qhiv{font-family:'Bebas Neue',sans-serif;font-size:16px}
+.qhim{font-size:9px;color:var(--mt);margin-top:1px}
+.expgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.expbtn{padding:14px 8px;border-radius:12px;border:none;cursor:pointer;
+  font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;
+  display:flex;flex-direction:column;align-items:center;gap:4px}
+.expbtn:active{opacity:.8}
+.expbtn .ei{font-size:28px}
+#calcModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;
+  align-items:flex-end;justify-content:center}
+#calcModal.show{display:flex}
+.cpanel{background:var(--sf);border-radius:20px 20px 0 0;padding:16px;width:100%;max-width:400px}
+.cdisp{background:var(--sf2);border-radius:10px;padding:12px;font-family:'Bebas Neue',sans-serif;
+  font-size:28px;text-align:right;color:var(--tx);margin-bottom:10px;min-height:52px;word-break:break-all;border:1px solid var(--bd)}
+.cexpr{font-size:12px;color:var(--mt);min-height:16px}
+.cgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cb{padding:14px 8px;border-radius:10px;border:none;font-family:'Bebas Neue',sans-serif;font-size:18px;cursor:pointer;font-weight:700}
+.cb:active{opacity:.7}
+.cb-n{background:var(--sf2);color:var(--tx)}
+.cb-o{background:rgba(245,158,11,.15);color:var(--am)}
+.cb-eq{background:var(--gr);color:#000;grid-column:span 2}
+.cb-c{background:rgba(239,68,68,.15);color:var(--rd)}
+.cb-use{background:linear-gradient(135deg,#229ED9,#1a7fc4);color:#fff;grid-column:span 2;font-size:14px}
+#setModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;overflow-y:auto}
+.spanel{background:var(--sf);border-radius:16px 16px 0 0;padding:16px;margin-top:50px;min-height:calc(100vh - 50px)}
+.srow{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.slbl2{font-size:10px;font-weight:700;color:var(--mt);letter-spacing:.5px}
+.sinput{width:100%;padding:9px 11px;border-radius:9px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--tx);font-family:'Manrope',sans-serif;font-size:12px;outline:none}
+.sinput:focus{border-color:var(--gr)}
+.hbox{background:var(--sf2);border-radius:9px;padding:10px;font-size:9px;color:var(--mt);line-height:1.7;margin-top:6px}
+.hbox b{color:var(--tx)}
+.tgrow{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bd)}
+.tgrow:last-child{border-bottom:none}
+.tglbl{font-size:13px;color:var(--tx)}
+.tg{width:44px;height:24px;background:var(--bd);border-radius:12px;position:relative;cursor:pointer}
+.tg.on{background:var(--gr)}
+.tg::after{content:'';position:absolute;width:20px;height:20px;border-radius:10px;background:#fff;top:2px;left:2px;transition:left .2s}
+.tg.on::after{left:22px}
+.selit{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bd)}
+.selit:last-child{border-bottom:none}
+.selclr{width:10px;height:10px;border-radius:5px;flex-shrink:0}
+.selnm{flex:1;padding:7px 10px;border-radius:8px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--tx);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;outline:none}
+.selpul{width:90px;padding:7px 8px;border-radius:8px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--tx);font-family:'Manrope',sans-serif;font-size:11px;font-weight:600;text-align:right;outline:none;appearance:none;-webkit-appearance:none}
+.seldel{width:30px;height:30px;border-radius:8px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--rd);font-size:14px;cursor:pointer;flex-shrink:0}
+.st{font-size:10px;text-align:center;margin-top:6px;min-height:16px;font-weight:600}
+.st.ok{color:var(--gr)}.st.err{color:var(--rd)}.st.ld{color:var(--am)}
+.toast{position:fixed;bottom:calc(var(--th) + 18px);left:50%;transform:translateX(-50%);
+  background:var(--sf);color:var(--tx);border:1px solid var(--bd);padding:9px 18px;
+  border-radius:18px;font-size:11px;font-weight:700;z-index:999;opacity:0;
+  transition:opacity .3s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.4)}
 .toast.show{opacity:1}
+.toast.ok{border-color:rgba(34,197,94,.4);color:var(--gr)}
+.toast.err{border-color:rgba(239,68,68,.4);color:var(--rd)}
+#calcFab{position:fixed;right:14px;bottom:calc(var(--th) + 14px);width:44px;height:44px;
+  border-radius:22px;border:none;background:var(--am);color:#000;font-size:20px;cursor:pointer;
+  box-shadow:0 4px 14px rgba(245,158,11,.4);z-index:100;display:flex;align-items:center;justify-content:center}
 </style>
 </head>
 <body>
 <div id="app">
   <header>
-    <div>
-      <div class="logo">ОТЧЕТ</div>
-      <div class="week-label" id="weekLabel">ВТ–ПН</div>
+    <div class="logo">ҲИСОБОТ</div>
+    <div class="wchip">
+      <button onclick="changeWeek(-1)">&#8249;</button>
+      <span id="wRange"></span>
+      <button onclick="changeWeek(1)">&#8250;</button>
     </div>
-    <div class="week-nav">
-      <button onclick="changeWeek(-1)">‹</button>
-      <span class="week-range" id="weekRange"></span>
-      <button onclick="changeWeek(1)">›</button>
+    <div class="hbtns">
+      <div style="display:flex;align-items:center;gap:3px;cursor:pointer" onclick="showSyncInfo()">
+        <div class="cdot" id="cdot"></div>
+        <span class="cinfo" id="cinfo">офлайн</span>
+      </div>
+      <button class="ibtn" onclick="toggleTheme()" id="themeBtn">&#127769;</button>
+      <button class="ibtn" onclick="showSettings()">&#9881;</button>
     </div>
   </header>
+  <main id="mainScroll">
 
-  <main>
-
-    <!-- ══════════════════ НЕДЕЛЬНЫЙ ОТЧЕТ ══════════════════ -->
-    <div class="page active" id="page-report">
-      <div class="summary-grid">
-        <div class="stat-box green">
-          <div class="stat-label">НАХТ КОЛДИ</div>
-          <div class="stat-value green" id="s-naht">0</div>
-          <div class="stat-sub">палички − (зп + йулкира)</div>
-        </div>
-        <div class="stat-box amber">
-          <div class="stat-label">КАССА</div>
-          <div class="stat-value amber" id="s-kassa">0</div>
-          <div class="stat-sub">палички + клик</div>
-        </div>
-        <div class="stat-box blue">
-          <div class="stat-label">ОБЩАЯ КАССА</div>
-          <div class="stat-value blue" id="s-obshaya">0</div>
-          <div class="stat-sub">касса + прочие расх.</div>
-        </div>
-        <div class="stat-box red">
-          <div class="stat-label">ПРОЧИЕ РАСХОДЫ</div>
-          <div class="stat-value red" id="s-misc">0</div>
-          <div class="stat-sub">продукты и др.</div>
-        </div>
-      </div>
-
+    <!-- КИРИШ -->
+    <div class="page active" id="page-input">
       <div class="card">
-        <div class="profit-bar-label"><span>НАХТ КОЛДИ от КАССА</span><span id="marginPct">0%</span></div>
-        <div class="profit-bar"><div class="profit-bar-fill" id="marginBar" style="width:0%"></div></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">📦 Продажи по дням</div>
-        <div style="overflow-x:auto">
-          <table class="day-table"><thead><tr id="salesHead"></tr></thead><tbody id="salesBody"></tbody></table>
+        <div class="ctitle">Сотувчи</div>
+        <div class="stabs" id="inputStabs"></div>
+        <div class="ctitle">Кун</div>
+        <div class="dpills" id="inputDays"></div>
+        <div class="fsect">Нақд пул</div>
+        <div class="frow">
+          <div class="flbl">Нақд пул</div>
+          <input class="finput" id="f-nal" type="number" inputmode="numeric" placeholder="0" oninput="autoSave();calcTotals()">
         </div>
-      </div>
-      <div class="card">
-        <div class="card-title">💼 Зарплата / Йулкира по дням</div>
-        <div style="overflow-x:auto">
-          <table class="day-table"><thead><tr id="zpHead"></tr></thead><tbody id="zpBody"></tbody></table>
+        <div class="fsect" style="margin-top:6px">Клик</div>
+        <div class="krows" id="krows"></div>
+        <button class="kadd" onclick="addKrow()">+ dobavit summu</button>
+        <div class="fsect" style="margin-top:6px">Маош / Юлқира</div>
+        <div class="frow">
+          <div class="flbl">Маош</div>
+          <input class="finput" id="f-zp" type="number" inputmode="numeric" placeholder="0" oninput="autoSave()">
         </div>
-      </div>
-      <div class="card">
-        <div class="card-title">🧾 Прочие расходы по дням</div>
-        <div style="overflow-x:auto">
-          <table class="day-table"><thead><tr id="expHead"></tr></thead><tbody id="expBody"></tbody></table>
+        <div class="frow">
+          <div class="flbl">Юлқира</div>
+          <input class="finput" id="f-pul" type="number" inputmode="numeric" placeholder="0" oninput="autoSave()">
         </div>
-      </div>
-
-      <div class="card" style="border-color:rgba(34,197,94,0.25)">
-        <div class="card-title">📤 Отправить недельный отчет</div>
-        <button class="tg-btn" onclick="sendWeekToTelegram()">
-          <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-          НЕДЕЛЯ В TELEGRAM
-        </button>
-        <div class="sync-status" id="weekTgStatus" style="margin-top:6px"></div>
-      </div>
-
-      <div class="card" style="border-color:rgba(52,168,83,0.3)">
-        <div class="card-title">🔄 Синхронизация с Google Таблицей</div>
-        <button class="sync-btn" id="syncBtn" onclick="syncToGoogleSheets()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-            <path d="M4 4v5h5M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14.93-2M20 15a8 8 0 0 1-14.93 2"/>
-          </svg>
-          СИНХРОНИЗИРОВАТЬ
-        </button>
-        <div class="sync-status" id="syncStatus" style="margin-top:6px"></div>
-        <div style="margin-top:8px;font-size:9px;color:var(--muted);text-align:center">
-          URL скрипта вводится в ⚙️ НАСТРОЙКИ
-        </div>
-      </div>
-
-    </div>
-
-    <!-- ══════════════════ ДНЕВНОЙ ОТЧЕТ ══════════════════ -->
-    <div class="page" id="page-daily">
-      <div class="card">
-        <div class="card-title">Выберите продавца</div>
-        <div class="seller-tabs" id="sellerTabsDaily">
-          <button class="seller-tab active-tanya" onclick="selectDailySeller('tanya',this)">Таня</button>
-          <button class="seller-tab" onclick="selectDailySeller('sveta',this)">Света</button>
-          <button class="seller-tab" onclick="selectDailySeller('dilnoza',this)">Дилноза</button>
-        </div>
-        <div class="card-title" style="margin-top:6px">Выберите день</div>
-        <div class="day-picker" id="dayPicker"></div>
-      </div>
-
-      <div id="dailyCards"></div>
-
-      <div class="card" style="border-color:rgba(34,197,94,0.25)">
-        <div class="card-title">📤 Отправить дневной отчет</div>
-        <button class="tg-btn" onclick="sendDailyToTelegram()">
-          <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.277-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-          ДЕНЬ В TELEGRAM
-        </button>
-        <div class="sync-status" id="dayTgStatus" style="margin-top:6px"></div>
-      </div>
-    </div>
-
-    <!-- ══════════════════ ПРОДАЖИ (ввод) ══════════════════ -->
-    <div class="page" id="page-sales">
-      <div class="card">
-        <div class="card-title">Продавец</div>
-        <div class="seller-tabs" id="sellerTabsSales">
-          <button class="seller-tab active-tanya" onclick="selectSeller('sales','tanya',this)">Таня</button>
-          <button class="seller-tab" onclick="selectSeller('sales','sveta',this)">Света</button>
-          <button class="seller-tab" onclick="selectSeller('sales','dilnoza',this)">Дилноза</button>
-        </div>
-        <div class="card-title">Выберите день</div>
-        <div class="date-selector" id="dateSel"></div>
-
-        <div class="form-section">
-          <div class="form-section-title">📦 Продажа</div>
-          <div class="form-row"><span class="form-label">Палички (наличи)</span><input class="form-input" id="i-palichki" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Клик (итого)</span><input class="form-input" id="i-klik" type="number" inputmode="numeric" placeholder="авто" readonly style="opacity:0.5"></div>
-        </div>
-        <button class="save-btn" onclick="saveSalesData()">СОХРАНИТЬ</button>
-      </div>
-    </div>
-
-    <!-- ══════════════════ ЗП / ЙУЛКИРА (ввод) ══════════════════ -->
-    <div class="page" id="page-zp">
-      <div class="card">
-        <div class="card-title">Продавец</div>
-        <div class="seller-tabs" id="sellerTabsZp">
-          <button class="seller-tab active-tanya" onclick="selectSeller('zp','tanya',this)">Таня</button>
-          <button class="seller-tab" onclick="selectSeller('zp','sveta',this)">Света</button>
-          <button class="seller-tab" onclick="selectSeller('zp','dilnoza',this)">Дилноза</button>
-        </div>
-        <div class="card-title">Выберите день</div>
-        <div class="date-selector" id="dateSelZp"></div>
-
-        <div class="form-section">
-          <div class="form-section-title" style="color:var(--blue)">💼 Выплаты</div>
-          <div class="form-row"><span class="form-label">Зарплата</span><input class="form-input" id="z-zarplata" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Йулкира</span><input class="form-input" id="z-pulkira" type="number" inputmode="numeric" placeholder="0"></div>
-        </div>
-        <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:9px;padding:9px;margin-bottom:9px;font-size:10px;color:var(--blue);font-weight:700">
-          НАХТ КОЛДИ = Палички − (Зарплата + Йулкира)<br>
-          <span style="color:var(--muted);font-weight:500">Таня и Света: Йулкира фиксированная = 50 000</span>
-        </div>
-        <button class="save-btn" onclick="saveZpData()" style="background:var(--blue)">СОХРАНИТЬ</button>
-      </div>
-    </div>
-
-    <!-- ══════════════════ ПРОЧИЕ РАСХОДЫ (ввод) ══════════════════ -->
-    <div class="page" id="page-expenses">
-      <div class="card">
-        <div class="card-title">Выберите день</div>
-        <div class="date-selector" id="dateSelExp"></div>
-        <div class="form-section">
-          <div class="form-section-title" style="color:var(--red)">🛒 Прочие расходы (общие)</div>
-          <div class="form-row"><span class="form-label">Зелень/Соль/Соя</span><input class="form-input" id="e-zel" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Пакет/Салфетки</span><input class="form-input" id="e-pak" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Обед/Кофе/Хлеб</span><input class="form-input" id="e-obed" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Гель/Азелит/Марля</span><input class="form-input" id="e-gel" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Уборка/Лампочка/Рем</span><input class="form-input" id="e-ubork" type="number" inputmode="numeric" placeholder="0"></div>
-          <div class="form-row"><span class="form-label">Сул/Муз</span><input class="form-input" id="e-sul" type="number" inputmode="numeric" placeholder="0"></div>
-        </div>
-        <button class="save-btn" onclick="saveExpenseData()" style="background:var(--red)">СОХРАНИТЬ</button>
-      </div>
-    </div>
-
-    <!-- ══════════════════ КЛИК (ввод) ══════════════════ -->
-    <div class="page" id="page-klik">
-      <div class="card">
-        <div class="card-title">Продавец</div>
-        <div class="seller-tabs" id="sellerTabsKlik">
-          <button class="seller-tab active-tanya" onclick="selectSeller('klik','tanya',this)">Таня</button>
-          <button class="seller-tab" onclick="selectSeller('klik','sveta',this)">Света</button>
-          <button class="seller-tab" onclick="selectSeller('klik','dilnoza',this)">Дилноза</button>
-        </div>
-        <div class="card-title">Выберите день</div>
-        <div class="date-selector" id="dateSelKlik"></div>
-        <div class="form-section">
-          <div class="form-section-title" style="color:var(--blue)">💻 Клик — суммы за день</div>
-          <div id="klikRows" class="klik-input"></div>
-          <button onclick="addKlikRow()" style="margin-top:8px;padding:7px 14px;border-radius:8px;border:1px dashed var(--border);background:none;color:var(--green);font-weight:700;cursor:pointer;width:100%;font-size:12px">+ Добавить сумму</button>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px">
-          <span style="color:var(--muted);font-weight:700">Итого Клик:</span>
-          <span style="color:var(--blue);font-weight:800" id="klikTotal">0</span>
-        </div>
-        <button class="save-btn" onclick="saveKlikData()" style="background:var(--blue)">СОХРАНИТЬ</button>
-      </div>
-    </div>
-
-    <!-- ══════════════════ НАСТРОЙКИ ══════════════════ -->
-    <div class="page" id="page-settings">
-      <div class="card" style="border-color:rgba(34,197,94,0.3)">
-        <div class="card-title">🤖 Настройки Telegram бота</div>
-
-        <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:9px;padding:10px;margin-bottom:12px;font-size:10px;color:var(--muted);line-height:1.7">
-          <b style="color:var(--green)">Как получить TOKEN:</b><br>
-          1. Найдите <b style="color:var(--text)">@BotFather</b> в Telegram<br>
-          2. Напишите <b style="color:var(--text)">/newbot</b><br>
-          3. Следуйте инструкциям → скопируйте TOKEN<br><br>
-          <b style="color:var(--green)">Как получить Chat ID:</b><br>
-          1. Найдите <b style="color:var(--text)">@userinfobot</b> в Telegram<br>
-          2. Напишите <b style="color:var(--text)">/start</b><br>
-          3. Скопируйте ваш <b style="color:var(--text)">Id</b>
-        </div>
-
-        <div class="form-section">
-          <div class="form-section-title" style="color:var(--blue)">🔑 Bot Token</div>
-          <input class="url-input" id="tgToken" type="text"
-            placeholder="123456789:AAFxxxxxxxxxxxxxxxx"
-            style="font-size:11px;letter-spacing:0.3px"
-            oninput="saveTgSettings()">
-        </div>
-
-        <div class="form-section">
-          <div class="form-section-title" style="color:var(--blue)">💬 Chat ID</div>
-          <input class="url-input" id="tgChatId" type="text"
-            placeholder="987654321"
-            oninput="saveTgSettings()">
-          <div style="font-size:9px;color:var(--muted);margin-top:4px">
-            Можно также ID группы или канала (начинается с -100...)
+        <div class="fsect" style="margin-top:6px">Бошқа харажатлар</div>
+        <div class="frow"><div class="flbl">Кўк/Туз/Соя</div><input class="finput" id="e-zel" type="number" inputmode="numeric" placeholder="0" oninput="autoSave()"></div>
+        <div class="frow"><div class="flbl">Пакет/Салфетка</div><input class="finput" id="e-pak" type="number" inputmode="numeric" placeholder="0" oninput="autoSave()"></div>
+        <div class="frow"><div class="flbl">Тушлик/Қаҳва/Нон</div><input class="finput" id="e-obed" type="number" inputmode="numeric" placeholder="0" oninput="autoSave()"></div>
+        <div class="frow"><div class="flbl">Гель/Азелит/Марля</div><input class="finput" id="e-gel" type="number" inputmode="numeric" placeholder="0" oninput="autoSave()"></div>
+        <div class="frow"><div class="flbl">Тозалаш/Чироқ</div><input class="finput" id="e-ubork" type="number" inputmode="numeric" placeholder="0" oninput="autoSave()"></div>
+        <div class="frow"><div class="flbl">Сув/Мусиқа</div><input class="finput" id="e-sul" type="number" inputmode="numeric" placeholder="0" oninput="autoSave()"></div>
+        <div class="frow"><div class="flbl">Бошқалар</div><input class="finput" id="e-prochie" type="number" inputmode="numeric" placeholder="0" oninput="autoSave()"></div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+          <div class="tbox"><span class="tl">Клик itogo</span><span class="tv" id="kTotal">0</span></div>
+          <div class="tbox" style="background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.2)">
+            <span class="tl">Сотув жами</span>
+            <span class="tv" style="color:var(--bl)" id="totalSale">0</span>
           </div>
         </div>
-
-        <button class="save-btn" onclick="testTgBot()" style="background:linear-gradient(135deg,#229ED9,#1a7fc4)">
-          🧪 ТЕСТ — ОТПРАВИТЬ ТЕСТОВОЕ СООБЩЕНИЕ
-        </button>
-        <div class="sync-status" id="tgTestStatus" style="margin-top:8px"></div>
+        <div class="st" id="saveSt"></div>
       </div>
+    </div>
 
-      <div class="card" style="border-color:rgba(52,168,83,0.3)">
-        <div class="card-title">🔄 Google Таблица</div>
-        <div style="font-size:10px;color:var(--muted);margin-bottom:8px">
-          URL вашего Google Apps Script (Web App URL)
+    <!-- КУН -->
+    <div class="page" id="page-day">
+      <div class="card">
+        <div class="ctitle">Сотувчи</div>
+        <div class="stabs" id="dayStabs"></div>
+        <div class="ctitle">Кун</div>
+        <div class="dpills" id="dayDays"></div>
+      </div>
+      <div id="dayCard"></div>
+      <div class="card" style="border-color:rgba(34,155,217,.3)">
+        <button class="btn btn-bl" onclick="sendDayTg()">Telegramга юбориш</button>
+        <div class="st" id="dayTgSt"></div>
+      </div>
+    </div>
+
+    <!-- ҲАФТА -->
+    <div class="page" id="page-week">
+      <div class="sgrid">
+        <div class="sbox g"><div class="slbl">НАХТ ҚОЛДИ</div><div class="sval g" id="wNaht">0</div><div class="ssub">нақд-(маош+юл)</div></div>
+        <div class="sbox a"><div class="slbl">КАССА</div><div class="sval a" id="wКасса">0</div><div class="ssub">нақд+клик</div></div>
+        <div class="sbox b"><div class="slbl">УМУМИЙ КАССА</div><div class="sval b" id="wObsh">0</div><div class="ssub">касса+харажат</div></div>
+        <div class="sbox r"><div class="slbl">БОШҚА ХАРА</div><div class="sval r" id="wMisc">0</div><div class="ssub">маҳсулот ва б.</div></div>
+      </div>
+      <div class="card">
+        <div class="pblbl"><span>Нахт қолди ot Kassy</span><span id="wPct">0%</span></div>
+        <div class="pb"><div class="pbf" id="wBar" style="width:0%"></div></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Сотув графиги (4 ҳафта)</div>
+        <div class="cwrap"><canvas id="salesChart"></canvas></div>
+        <div class="cleg">
+          <div class="cleg-i"><div class="cleg-d" style="background:var(--gr)"></div>Касса</div>
+          <div class="cleg-i"><div class="cleg-d" style="background:var(--bl)"></div>Нахт қолди</div>
+          <div class="cleg-i"><div class="cleg-d" style="background:var(--rd)"></div>Харажатлар</div>
         </div>
-        <input class="url-input" id="scriptUrl" type="url"
-          placeholder="https://script.google.com/macros/s/.../exec"
-          oninput="saveScriptUrl()">
-        <div style="margin-top:8px;background:var(--surface2);border-radius:8px;padding:10px;font-size:9px;color:var(--muted);line-height:1.6">
-          <b style="color:var(--text)">Как подключить:</b><br>
-          1. Google Таблица → Расширения → Apps Script<br>
-          2. Вставьте код из <b>google-apps-script.gs</b><br>
-          3. Развернуть → Веб-приложение → Доступ: Все<br>
-          4. Скопируйте URL → вставьте выше
+      </div>
+      <div class="card">
+        <div class="ctitle">Ҳафталар таққосланиши</div>
+        <div class="cmpgrid" id="cmpGrid"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Энг яхши кун</div>
+        <div id="bestDay"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Сотувчилар рейтинги</div>
+        <div id="bestSel"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Кунлик сотувлар</div>
+        <div style="overflow-x:auto"><table class="tbl"><thead><tr id="wSH"></tr></thead><tbody id="wSB"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Маош / Юлқира</div>
+        <div style="overflow-x:auto"><table class="tbl"><thead><tr id="wZH"></tr></thead><tbody id="wZB"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Бошқа харажатлар</div>
+        <div style="overflow-x:auto"><table class="tbl"><thead><tr id="wEH"></tr></thead><tbody id="wEB"></tbody></table></div>
+      </div>
+      <div class="card" style="border-color:rgba(34,155,217,.3)">
+        <button class="btn btn-bl" onclick="sendWeekTg()">Ҳафтани Telegramга</button>
+        <div class="st" id="weekTgSt"></div>
+      </div>
+      <div class="card" style="border-color:rgba(52,168,83,.3)">
+        <button class="btn btn-sy" onclick="syncSheets()">Синхронлаштириш</button>
+        <div class="st" id="syncSt"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Экспорт</div>
+        <div class="expgrid">
+          <button class="expbtn" onclick="exportExcel()" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--gr)">
+            <span class="ei">&#128202;</span>EXCEL
+          </button>
+          <button class="expbtn" onclick="exportCSV()" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:var(--bl)">
+            <span class="ei">&#128203;</span>CSV
+          </button>
         </div>
+        <div class="st" id="exportSt"></div>
+      </div>
+    </div>
+
+    <!-- ОЙ -->
+    <div class="page" id="page-month">
+      <div class="mtabs" id="monthTabs"></div>
+      <div class="sgrid">
+        <div class="sbox g"><div class="slbl">НАХТ ҚОЛДИ</div><div class="sval g" id="mNaht">0</div></div>
+        <div class="sbox a"><div class="slbl">КАССА</div><div class="sval a" id="mКасса">0</div></div>
+        <div class="sbox b"><div class="slbl">УМУМИЙ</div><div class="sval b" id="mObsh">0</div></div>
+        <div class="sbox r"><div class="slbl">ХАРАЖАТ</div><div class="sval r" id="mMisc">0</div></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Ҳафталар бўйича график</div>
+        <div class="cwrap"><canvas id="monthChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Энг яхши сотувчи</div>
+        <div id="mBest"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Ҳафталар бўйича</div>
+        <div id="mWeeks"></div>
+      </div>
+    </div>
+
+    <!-- ТЕЗКОР -->
+    <div class="page" id="page-quick">
+      <div class="card">
+        <div class="ctitle">Сотувчи</div>
+        <div class="stabs" id="quickStabs"></div>
+        <div class="ctitle">Кун</div>
+        <div class="dpills" id="quickDays"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Тезкор киритиш</div>
+        <input class="qamount" id="qAmt" type="number" inputmode="numeric" placeholder="0" oninput="qUpdate()">
+        <div class="qtypes">
+          <div class="qtype on-nal" id="qt-nal" onclick="qSel('nal',this)"><div class="qi">&#128181;</div>Нақд пул</div>
+          <div class="qtype" id="qt-kl" onclick="qSel('kl',this)"><div class="qi">&#128187;</div>Клик</div>
+          <div class="qtype" id="qt-zp" onclick="qSel('zp',this)"><div class="qi">&#128188;</div>Маош</div>
+          <div class="qtype" id="qt-pul" onclick="qSel('pul',this)"><div class="qi">&#128179;</div>Юлқира</div>
+          <div class="qtype" id="qt-exp" onclick="qSel('exp',this)" style="grid-column:span 2"><div class="qi">&#129535;</div>Бошқа харажатлар</div>
+        </div>
+        <button class="qdone" id="qBtn" onclick="qSave()">САҚЛАШ</button>
+        <div class="st" id="qSt"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Охирги ёзувлар</div>
+        <div class="qhist" id="qHist"><div style="color:var(--mt);font-size:12px;text-align:center;padding:8px">Ёзувлар йўқ</div></div>
       </div>
     </div>
 
   </main>
-
-  <div class="swipe-dots" id="swipeDots"></div>
+  <button id="calcFab" onclick="openCalcFab()">&#129518;</button>
+  <div class="dots" id="dots">
+    <div class="dot on"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
   <nav>
-    <button class="active" onclick="showPage('report',this)"><span class="icon">📊</span>НЕДЕЛЯ</button>
-    <button onclick="showPage('daily',this)"><span class="icon">📅</span>ДЕНЬ</button>
-    <button onclick="showPage('sales',this)"><span class="icon">🏪</span>ПРОДАЖИ</button>
-    <button onclick="showPage('zp',this)"><span class="icon">💼</span>ЗП/ЙУЛ</button>
-    <button onclick="showPage('expenses',this)"><span class="icon">🧾</span>РАСХОДЫ</button>
-    <button onclick="showPage('klik',this)"><span class="icon">💻</span>КЛИК</button>
-    <button onclick="showPage('settings',this)"><span class="icon">⚙️</span>НАСТРОЙКИ</button>
+    <button class="on" onclick="goPage(0,this)"><span class="ni">&#9999;</span>КИРИШ</button>
+    <button onclick="goPage(1,this)"><span class="ni">&#128197;</span>КУН</button>
+    <button onclick="goPage(2,this)"><span class="ni">&#128202;</span>ҲАФТА</button>
+    <button onclick="goPage(3,this)"><span class="ni">&#128198;</span>ОЙ</button>
+    <button onclick="goPage(4,this)"><span class="ni">&#9889;</span>ТЕЗКОР</button>
   </nav>
 </div>
+
+<!-- KALKULATOR -->
+<div id="calcModal">
+  <div class="cpanel">
+    <div class="cdisp"><div class="cexpr" id="cExpr"></div><div id="cDisp">0</div></div>
+    <div class="cgrid">
+      <button class="cb cb-c" onclick="cb('C')">C</button>
+      <button class="cb cb-o" onclick="cb('+/-')" >+/-</button>
+      <button class="cb cb-o" onclick="cb('%')">%</button>
+      <button class="cb cb-o" onclick="cb('/')">&#247;</button>
+      <button class="cb cb-n" onclick="cb('7')">7</button>
+      <button class="cb cb-n" onclick="cb('8')">8</button>
+      <button class="cb cb-n" onclick="cb('9')">9</button>
+      <button class="cb cb-o" onclick="cb('*')">&#215;</button>
+      <button class="cb cb-n" onclick="cb('4')">4</button>
+      <button class="cb cb-n" onclick="cb('5')">5</button>
+      <button class="cb cb-n" onclick="cb('6')">6</button>
+      <button class="cb cb-o" onclick="cb('-')">-</button>
+      <button class="cb cb-n" onclick="cb('1')">1</button>
+      <button class="cb cb-n" onclick="cb('2')">2</button>
+      <button class="cb cb-n" onclick="cb('3')">3</button>
+      <button class="cb cb-o" onclick="cb('+')">+</button>
+      <button class="cb cb-n" onclick="cb('0')" style="grid-column:span 2">0</button>
+      <button class="cb cb-n" onclick="cb('.')">.</button>
+      <button class="cb cb-eq" onclick="cb('=')">=</button>
+      <button class="cb cb-use" onclick="calcUse()">Киритиш</button>
+      <button class="cb cb-c" onclick="closeCalc()" style="background:rgba(100,116,139,.2);color:var(--mt)">X</button>
+    </div>
+  </div>
+</div>
+
+<!-- СОЗЛАМАЛАР -->
+<div id="setModal">
+  <div class="spanel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--gr)">СОЗЛАМАЛАР</span>
+      <button onclick="closeSettings()" style="background:var(--sf2);border:1px solid var(--bd);color:var(--tx);width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer">X</button>
+    </div>
+    <div class="card">
+      <div class="ctitle">Интерфейс</div>
+      <div class="tgrow"><span class="tglbl">Тўқ мавзу</span><div class="tg on" id="themeTg" onclick="toggleTheme()"></div></div>
+      <div class="tgrow"><span class="tglbl">Ҳар 5 дақиқада авто-синхрон</span><div class="tg on" id="autoSyncTg" onclick="toggleAutoSync()"></div></div>
+    </div>
+    <div class="card">
+      <div class="ctitle">Telegram Бот</div>
+      <div class="srow"><div class="slbl2">BOT TOKEN</div><input class="sinput" id="sTok" placeholder="123456789:AAF..." oninput="saveSets()"></div>
+      <div class="srow"><div class="slbl2">CHAT ID</div><input class="sinput" id="sChat" placeholder="987654321" oninput="saveSets()"></div>
+      <button class="btn btn-bl" onclick="testBot()" style="font-size:13px;padding:10px;margin-top:4px">Ботни синаш</button>
+      <div class="st" id="botSt"></div>
+      <div class="hbox">TOKEN: @BotFather → /newbot<br>Chat ID: @userinfobot → /start</div>
+    </div>
+    <div class="card">
+      <div class="ctitle">Google Жадвал</div>
+      <div class="srow"><div class="slbl2">WEB APP URL</div><input class="sinput" id="sUrl" placeholder="https://script.google.com/..." oninput="saveSets()"></div>
+      <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+        <button class="btn btn-sy" onclick="syncSheets()" style="flex:1;font-size:12px;padding:10px;margin-top:0">Синхрон</button>
+        <button class="btn btn-bl" onclick="restoreFromSheets()" style="flex:1;font-size:12px;padding:10px;margin-top:0">Тиклаш</button>
+      </div>
+      <div class="st" id="sheetSt"></div>
+      <div class="hbox">1. Жадвал → Кенгайтмалар → Apps Script<br>2. google-apps-script.gs кодини киритинг<br>3. Жойлаштириш → Веб-илова → Ҳамма</div>
+    </div>
+    <div class="card" style="border-color:rgba(34,197,94,.3)">
+      <div class="ctitle">Созламали хатчўп</div>
+      <button class="btn btn-gr" onclick="saveBm()" style="font-size:13px;padding:11px">Ҳавола яратиш</button>
+      <div class="st" id="bmSt"></div>
+      <div id="bmWrap" style="display:none;margin-top:8px">
+        <div style="font-size:9px;color:var(--mt);margin-bottom:4px">Нусхаланг ва хатчўпга қўшинг:</div>
+        <div id="bmLink" style="background:var(--sf2);border:1px solid var(--bd);border-radius:8px;padding:8px;font-size:9px;color:var(--gr);word-break:break-all"></div>
+        <button class="btn btn-bl" onclick="copyBm()" style="font-size:12px;padding:9px;margin-top:6px">Нусхалаш</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ctitle">Сотувчилар</div>
+      <div id="selMgmt"></div>
+      <button class="btn btn-gr" onclick="addSeller()" style="font-size:13px;padding:10px;margin-top:6px">+ Қўшиш</button>
+      <button class="btn btn-bl" onclick="saveSellers()" style="font-size:13px;padding:10px;margin-top:6px">Сотувчиларни сақлаш</button>
+      <div class="st" id="selSt"></div>
+    </div>
+    <div class="card">
+      <div class="ctitle">Маълумотлар</div>
+      <button class="btn btn-rd" onclick="clearAll()" style="font-size:13px;padding:11px">Барча маълумотларни ўчириш</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-// ══ КОНСТАНТЫ ══
-const SELLERS = [
-  {id:'tanya',  name:'Таня',    cls:'tanya',   color:'var(--purple)'},
-  {id:'sveta',  name:'Света',   cls:'sveta',   color:'var(--teal)'},
-  {id:'dilnoza',name:'Дилноза', cls:'dilnoza', color:'var(--amber)'},
-];
+// === CONSTANTS ===
+var SELLER_COLORS = ['#a855f7','#14b8a6','#f59e0b','#3b82f6','#ef4444','#22c55e'];
+var SELLER_CLS = ['t','s','d','b','r','g'];
+var EXP_FIELDS = ['zel','pak','obed','gel','ubork','sul','prochie'];
+var EXP_LABELS = ['Кўк/Туз/Соя','Пакет/Салфетка','Тушлик/Қаҳва/Нон','Gel/Azelit','Uborka/Lamp','Сув/Мусиқа','Бошқалар'];
+var PAGES = ['input','day','week','month','quick'];
+var MONTHS = ['Январь','Феврал','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 
-// ══ НЕДЕЛЯ: ВТ → ПН ══
-let currentWeekOffset = 0;
+// === STATE ===
+var weekOffset = 0;
+var curPage = 0;
+var curSeller = null;
+var curDaySeller = null;
+var curQuickSeller = null;
+var selDate = null;
+var selDayDate = null;
+var selQuickDate = null;
+var quickType = 'nal';
+var selMonth = {y: new Date().getFullYear(), m: new Date().getMonth()};
+var saveTimer = null;
+var syncInterval = null;
+var calcTarget = null;
+var calcExpr = '';
+var calcVal = '0';
+var calcNew = true;
 
-function getWeekDates(offset=0){
-  const now = new Date();
-  const dow = now.getDay();
-  const daysToTue = dow===0?5:dow===1?6:dow-2;
-  const tue = new Date(now);
-  tue.setDate(now.getDate()-daysToTue+offset*7);
+// === STORAGE ===
+function ls(k, v) {
+  if (v === undefined) { try { return JSON.parse(localStorage.getItem(k) || '{}'); } catch(e) { return {}; } }
+  localStorage.setItem(k, JSON.stringify(v));
+}
+var D = {
+  sales: function() { return ls('Ds'); },
+  setSales: function(v) { ls('Ds', v); },
+  zp: function() { return ls('Dz'); },
+  setZp: function(v) { ls('Dz', v); },
+  klik: function() { return ls('Dk'); },
+  setКлик: function(v) { ls('Dk', v); },
+  exp: function() { return ls('De'); },
+  setExp: function(v) { ls('De', v); }
+};
+
+// === SELLERS ===
+function getSellers() {
+  var saved = localStorage.getItem('sellers');
+  if (saved) { try { return JSON.parse(saved); } catch(e) {} }
+  return [
+    {id:'tanya', name:'Tanya', cls:'t', fixedPul:50000},
+    {id:'sveta', name:'Sveta', cls:'s', fixedPul:50000},
+    {id:'dilnoza', name:'Dilnoza', cls:'d', fixedPul:0}
+  ];
+}
+function saveSellersData(arr) { localStorage.setItem('sellers', JSON.stringify(arr)); rebuildAll(); }
+
+var SELLERS = [];
+var FIXED_PUL = {};
+
+function rebuildAll() {
+  var arr = getSellers();
+  SELLERS = arr.map(function(s) { return {id:s.id, name:s.name, cls:s.cls}; });
+  FIXED_PUL = {};
+  arr.forEach(function(s) { if (s.fixedPul > 0) FIXED_PUL[s.id] = s.fixedPul; });
+  if (!curSeller || !SELLERS.find(function(s){return s.id===curSeller;})) curSeller = SELLERS[0] && SELLERS[0].id;
+  if (!curDaySeller || !SELLERS.find(function(s){return s.id===curDaySeller;})) curDaySeller = SELLERS[0] && SELLERS[0].id;
+  if (!curQuickSeller || !SELLERS.find(function(s){return s.id===curQuickSeller;})) curQuickSeller = SELLERS[0] && SELLERS[0].id;
+  renderSellerTabs();
+}
+
+function renderSellerTabs() {
+  renderTabsIn('inputStabs', curSeller, 'selSeller');
+  renderTabsIn('dayStabs', curDaySeller, 'selDaySeller');
+  renderTabsIn('quickStabs', curQuickSeller, 'selQuickSeller');
+}
+
+function renderTabsIn(contId, curId, fn) {
+  var cont = document.getElementById(contId);
+  if (!cont) return;
+  var html = '';
+  SELLERS.forEach(function(s) {
+    var on = s.id === curId ? ' ' + s.cls : '';
+    html += '<div class="stab' + on + '" onclick="' + fn + '(\'' + s.id + '\',this)">' + s.name + '</div>';
+  });
+  cont.innerHTML = html;
+  cont.style.gridTemplateColumns = 'repeat(' + Math.min(SELLERS.length, 3) + ',1fr)';
+}
+
+function selSeller(id, btn) {
+  curSeller = id;
+  document.querySelectorAll('#inputStabs .stab').forEach(function(b) { b.className = 'stab'; });
+  var s = SELLERS.find(function(s){return s.id===id;});
+  if (s) btn.className = 'stab ' + s.cls;
+  loadInputFields();
+}
+
+function selDaySeller(id, btn) {
+  curDaySeller = id;
+  document.querySelectorAll('#dayStabs .stab').forEach(function(b) { b.className = 'stab'; });
+  var s = SELLERS.find(function(s){return s.id===id;});
+  if (s) btn.className = 'stab ' + s.cls;
+  renderDayCard();
+}
+
+function selQuickSeller(id, btn) {
+  curQuickSeller = id;
+  document.querySelectorAll('#quickStabs .stab').forEach(function(b) { b.className = 'stab'; });
+  var s = SELLERS.find(function(s){return s.id===id;});
+  if (s) btn.className = 'stab ' + s.cls;
+  renderQHist();
+}
+
+// === DATES ===
+function getWeekDates(off) {
+  off = off || 0;
+  var now = new Date();
+  var dow = now.getDay();
+  var d2t = dow === 0 ? 5 : dow === 1 ? 6 : dow - 2;
+  var tue = new Date(now);
+  tue.setDate(now.getDate() - d2t + off * 7);
   tue.setHours(0,0,0,0);
-  const dates=[];
-  for(let i=0;i<7;i++){const d=new Date(tue);d.setDate(tue.getDate()+i);dates.push(d);}
+  var dates = [];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(tue);
+    d.setDate(tue.getDate() + i);
+    dates.push(d);
+  }
   return dates;
 }
-const DAY_RU=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
-function dayLabel(d){return DAY_RU[d.getDay()]+' '+d.getDate();}
-function shortDate(d){return d.getDate()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+(String(d.getFullYear()).slice(2));}
-function dateKey(d){return d.toISOString().slice(0,10);}
-function fmt(n){if(!n&&n!==0)return '–';return Number(n).toLocaleString('ru-RU');}
+var DR = ['Як','Ду','Се','Чо','Па','Жу','Ша'];
+function dKey(d) { return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+function dShort(d) { return d.getDate() + '.' + pad(d.getMonth()+1); }
+function dFull(d) { return d.getDate() + '.' + pad(d.getMonth()+1) + '.' + String(d.getFullYear()).slice(2); }
+function dLabel(d) { return DR[d.getDay()] + ' ' + d.getDate(); }
+function fmt(n) { if (!n && n !== 0) return '-'; return Number(n).toLocaleString('ru-RU'); }
+function num(v) { return Number(v) || 0; }
 
-// ══ STORAGE ══
-const LS={
-  get(k){try{return JSON.parse(localStorage.getItem(k)||'{}')}catch{return{}}},
-  set(k,v){localStorage.setItem(k,JSON.stringify(v))}
-};
-// sales: { dateKey: { tanya:{palichki}, sveta:{palichki}, dilnoza:{palichki} } }
-// zp:    { dateKey: { tanya:{zarplata,pulkira}, sveta:{...}, dilnoza:{...} } }
-// klik:  { dateKey: { tanya:[...], sveta:[...], dilnoza:[...] } }
-// exp:   { dateKey: { zel,pak,obed,gel,ubork,sul } }
-const getSales=()=>LS.get('s3'); const saveSales=d=>LS.set('s3',d);
-const getZp=()=>LS.get('z3');    const saveZp=d=>LS.set('z3',d);
-const getKlik=()=>LS.get('k3');  const saveKlik=d=>LS.set('k3',d);
-const getExp=()=>LS.get('e3');   const saveExp=d=>LS.set('e3',d);
-
-// ══ CURRENT SELLER STATE ══
-const curSeller={sales:'tanya', zp:'tanya', klik:'tanya'};
-
-// ══ WEEK NAV ══
-function changeWeek(dir){currentWeekOffset+=dir;renderAll();}
-function updateWeekLabel(){
-  const dates=getWeekDates(currentWeekOffset);
-  document.getElementById('weekRange').textContent=shortDate(dates[0])+'–'+shortDate(dates[6]);
-  document.getElementById('weekLabel').textContent='ВТ '+dates[0].getDate()+' – ПН '+dates[6].getDate();
+function changeWeek(dir) {
+  weekOffset += dir;
+  updateWChip();
+  if (curPage === 2) renderWeek();
+  if (curPage === 1) initDayPage();
 }
 
-// ══ DATE SELECTOR ══
-function buildDateSelector(id, onSelect){
-  const cont=document.getElementById(id);
-  const dates=getWeekDates(currentWeekOffset);
-  cont.innerHTML='';
-  const todayStr=dateKey(new Date());
-  let ai=dates.findIndex(d=>dateKey(d)===todayStr);
-  if(ai<0)ai=0;
-  dates.forEach((d,i)=>{
-    const btn=document.createElement('button');
-    btn.className='date-btn'+(i===ai?' active':'');
-    btn.textContent=dayLabel(d);
-    btn.onclick=()=>{cont.querySelectorAll('.date-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');onSelect(d);};
+function updateWChip() {
+  var d = getWeekDates(weekOffset);
+  document.getElementById('wRange').textContent = dShort(d[0]) + '-' + dShort(d[6]);
+}
+
+// === NAVIGATION ===
+function goPage(idx, btn) {
+  if (idx < 0 || idx >= PAGES.length) return;
+  curPage = idx;
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('nav button').forEach(function(b) { b.classList.remove('on'); });
+  document.getElementById('page-' + PAGES[idx]).classList.add('active');
+  if (btn) btn.classList.add('on');
+  else document.querySelectorAll('nav button')[idx].classList.add('on');
+  document.querySelectorAll('.dot').forEach(function(d, i) { d.classList.toggle('on', i === idx); });
+  if (idx === 0) initInputPage();
+  if (idx === 1) initDayPage();
+  if (idx === 2) setTimeout(renderWeek, 50);
+  if (idx === 3) setTimeout(renderMonth, 50);
+  if (idx === 4) initQuickPage();
+}
+
+// Swipe
+(function() {
+  var sx = 0, sy = 0, sw = false;
+  document.addEventListener('touchstart', function(e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; sw = false; }, {passive:true});
+  document.addEventListener('touchmove', function(e) {
+    var dx = e.touches[0].clientX - sx, dy = e.touches[0].clientY - sy;
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) sw = true;
+  }, {passive:true});
+  document.addEventListener('touchend', function(e) {
+    if (!sw) return;
+    var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) < Math.abs(dy) * 1.5 || Math.abs(dx) < 50) return;
+    goPage(dx < 0 ? curPage + 1 : curPage - 1, null);
+    sw = false;
+  }, {passive:true});
+})();
+
+// === THEME ===
+function toggleTheme() {
+  var html = document.documentElement;
+  var dark = html.getAttribute('data-theme') === 'dark';
+  var t = dark ? 'light' : 'dark';
+  html.setAttribute('data-theme', t);
+  localStorage.setItem('theme', t);
+  document.getElementById('themeBtn').textContent = dark ? '☀' : '🌙';
+  document.getElementById('themeColor').content = dark ? '#f1f5f9' : '#0d1117';
+  var tg = document.getElementById('themeTg');
+  if (tg) tg.classList.toggle('on', !dark);
+}
+function loadTheme() {
+  var t = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeBtn').textContent = t === 'dark' ? '🌙' : '☀';
+  document.getElementById('themeColor').content = t === 'dark' ? '#0d1117' : '#f1f5f9';
+  var tg = document.getElementById('themeTg');
+  if (tg) tg.classList.toggle('on', t === 'dark');
+}
+
+// === PILLS ===
+function buildPills(contId, onSelect, initDate) {
+  var cont = document.getElementById(contId);
+  if (!cont) return;
+  var dates = getWeekDates(weekOffset);
+  cont.innerHTML = '';
+  var todayStr = dKey(new Date());
+  var ai = dates.findIndex(function(d) { return dKey(d) === todayStr; });
+  if (ai < 0) ai = 0;
+  if (initDate) {
+    var ii = dates.findIndex(function(d) { return dKey(d) === dKey(initDate); });
+    if (ii >= 0) ai = ii;
+  }
+  dates.forEach(function(d, i) {
+    var btn = document.createElement('button');
+    btn.className = 'dpill' + (i === ai ? ' on' : '');
+    btn.textContent = dLabel(d);
+    btn.onclick = (function(date) {
+      return function() {
+        cont.querySelectorAll('.dpill').forEach(function(b) { b.classList.remove('on'); });
+        btn.classList.add('on');
+        onSelect(date);
+      };
+    })(d);
     cont.appendChild(btn);
   });
   onSelect(dates[ai]);
 }
 
-// ══ SELLER TABS ══
-function selectSeller(page, sellerId, btn){
-  curSeller[page]=sellerId;
-  const tabGroup=btn.parentElement;
-  tabGroup.querySelectorAll('.seller-tab').forEach(b=>{
-    b.className='seller-tab';
-  });
-  btn.className='seller-tab active-'+sellerId;
-  // reload fields
-  if(page==='sales')loadSalesFields();
-  if(page==='zp')loadZpFields();
-  if(page==='klik')loadKlikFields();
+// === INPUT PAGE ===
+function initInputPage() {
+  buildPills('inputDays', function(d) { selDate = d; loadInputFields(); }, selDate);
 }
 
-// ══ WEEKLY REPORT ══
-function renderReport(){
-  const dates=getWeekDates(currentWeekOffset);
-  const sales=getSales(); const zp=getZp(); const exp=getExp(); const klik=getKlik();
-  const todayStr=dateKey(new Date());
-
-  let totPalichki=0,totKlik=0,totZP=0,totPul=0,totMisc=0;
-
-  // — Продажи —
-  document.getElementById('salesHead').innerHTML=
-    '<th>Продавец</th>'+dates.map(d=>`<th class="${dateKey(d)===todayStr?'today-col':''}">${d.getDate()}.${d.getMonth()+1}</th>`).join('')+'<th>ОБЩ</th>';
-
-  let salesRows='';
-  SELLERS.forEach(s=>{
-    const palVals=dates.map(d=>Number(((sales[dateKey(d)]||{})[s.id]||{}).palichki||0));
-    const klVals=dates.map(d=>{const arr=((klik[dateKey(d)]||{})[s.id])||[];return arr.reduce((a,b)=>a+(Number(b)||0),0);});
-    const kassaVals=dates.map((_,i)=>palVals[i]+klVals[i]);
-    const totPal=palVals.reduce((a,b)=>a+b,0);
-    const totKl=klVals.reduce((a,b)=>a+b,0);
-    totPalichki+=totPal; totKlik+=totKl;
-    salesRows+=`<tr><td style="color:${s.color};font-weight:700">${s.name} Нахт</td>${palVals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td style="color:${s.color}">${fmt(totPal)}</td></tr>`;
-    salesRows+=`<tr><td style="color:var(--blue)">  Клик</td>${klVals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td style="color:var(--blue)">${fmt(totKl)}</td></tr>`;
-    salesRows+=`<tr class="tr-amber"><td>  Касса</td>${kassaVals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td>${fmt(totPal+totKl)}</td></tr>`;
-  });
-  // итого строка
-  const totDayKassa=dates.map(d=>{
-    let s=0; SELLERS.forEach(sl=>{
-      s+=Number(((sales[dateKey(d)]||{})[sl.id]||{}).palichki||0);
-      const kArr=((klik[dateKey(d)]||{})[sl.id])||[];
-      s+=kArr.reduce((a,b)=>a+(Number(b)||0),0);
-    }); return s;
-  });
-  salesRows+=`<tr class="tr-total"><td>ИТОГО КАССА</td>${totDayKassa.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td>${fmt(totPalichki+totKlik)}</td></tr>`;
-  document.getElementById('salesBody').innerHTML=salesRows;
-
-  // — ЗП / Йулкира —
-  document.getElementById('zpHead').innerHTML=
-    '<th>Продавец</th>'+dates.map(d=>`<th class="${dateKey(d)===todayStr?'today-col':''}">${d.getDate()}.${d.getMonth()+1}</th>`).join('')+'<th>ОБЩ</th>';
-  let zpRows='';
-  SELLERS.forEach(s=>{
-    const zpVals=dates.map(d=>Number(((zp[dateKey(d)]||{})[s.id]||{}).zarplata||0));
-    const pulVals=dates.map(d=>Number(((zp[dateKey(d)]||{})[s.id]||{}).pulkira||0));
-    const totZ=zpVals.reduce((a,b)=>a+b,0); const totP=pulVals.reduce((a,b)=>a+b,0);
-    totZP+=totZ; totPul+=totP;
-    zpRows+=`<tr><td style="color:${s.color};font-weight:700">${s.name} ЗП</td>${zpVals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td style="color:${s.color}">${fmt(totZ)}</td></tr>`;
-    zpRows+=`<tr class="tr-red"><td>  Йулкира</td>${pulVals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td>${fmt(totP)}</td></tr>`;
-  });
-  const zpDayTot=dates.map(d=>{let s=0;SELLERS.forEach(sl=>{s+=Number(((zp[dateKey(d)]||{})[sl.id]||{}).zarplata||0)+Number(((zp[dateKey(d)]||{})[sl.id]||{}).pulkira||0);});return s;});
-  zpRows+=`<tr class="tr-total"><td>ИТОГО ЗП+ЙУЛ</td>${zpDayTot.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td>${fmt(totZP+totPul)}</td></tr>`;
-  document.getElementById('zpBody').innerHTML=zpRows;
-
-  // — Прочие расходы —
-  const expCats=[['Зелень/Соль','zel'],['Пакет/Салф','pak'],['Обед/Кофе','obed'],['Гель/Азелит','gel'],['Уборка/Рем','ubork'],['Сул/Муз','sul']];
-  document.getElementById('expHead').innerHTML=
-    '<th>Статья</th>'+dates.map(d=>`<th class="${dateKey(d)===todayStr?'today-col':''}">${d.getDate()}.${d.getMonth()+1}</th>`).join('')+'<th>ОБЩ</th>';
-  let expRows=''; const expDayTot=new Array(7).fill(0);
-  expCats.forEach(([label,field])=>{
-    const vals=dates.map((d,i)=>{const v=Number((getExp()[dateKey(d)]||{})[field]||0);expDayTot[i]+=v;totMisc+=v;return v;});
-    const tot=vals.reduce((a,b)=>a+b,0);
-    expRows+=`<tr><td>${label}</td>${vals.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td style="color:var(--red)">${fmt(tot)}</td></tr>`;
-  });
-  expRows+=`<tr class="tr-amber"><td>ИТОГО</td>${expDayTot.map((v,i)=>`<td class="${dateKey(dates[i])===todayStr?'today-col':''}">${fmt(v)}</td>`).join('')}<td>${fmt(expDayTot.reduce((a,b)=>a+b,0))}</td></tr>`;
-  document.getElementById('expBody').innerHTML=expRows;
-
-  // — Сводка —
-  const kassa=totPalichki+totKlik;
-  const nahtKoldi=totPalichki-(totZP+totPul);
-  const obshaya=kassa+totMisc;
-  document.getElementById('s-naht').textContent=fmt(nahtKoldi);
-  document.getElementById('s-kassa').textContent=fmt(kassa);
-  document.getElementById('s-obshaya').textContent=fmt(obshaya);
-  document.getElementById('s-misc').textContent=fmt(totMisc);
-  const pct=kassa>0?Math.round((nahtKoldi/kassa)*100):0;
-  document.getElementById('marginPct').textContent=pct+'%';
-  document.getElementById('marginBar').style.width=Math.max(0,Math.min(100,pct))+'%';
-}
-
-// ══ ДНЕВНОЙ ОТЧЕТ ══
-let selDailyDate=null;
-let selDailySeller='tanya';
-
-function selectDailySeller(sid, btn){
-  selDailySeller=sid;
-  const tabs=document.getElementById('sellerTabsDaily');
-  tabs.querySelectorAll('.seller-tab').forEach(b=>b.className='seller-tab');
-  btn.className='seller-tab active-'+sid;
-  renderDailyCards();
-}
-
-function buildDayPicker(){
-  const cont=document.getElementById('dayPicker');
-  const dates=getWeekDates(currentWeekOffset);
-  cont.innerHTML='';
-  const todayStr=dateKey(new Date());
-  let ai=dates.findIndex(d=>dateKey(d)===todayStr);
-  if(ai<0)ai=0;
-  dates.forEach((d,i)=>{
-    const btn=document.createElement('button');
-    btn.className='day-btn'+(i===ai?' active':'');
-    btn.textContent=dayLabel(d);
-    btn.onclick=()=>{
-      cont.querySelectorAll('.day-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      selDailyDate=d; renderDailyCards();
-    };
-    cont.appendChild(btn);
-  });
-  selDailyDate=dates[ai];
-  renderDailyCards();
-}
-
-function getDayData(d){
-  const k=dateKey(d);
-  const sales=getSales(); const zp=getZp(); const klik=getKlik(); const exp=getExp();
-  const result={date:d, sellers:[], totalMisc:0, totalKassa:0, totalNaht:0, totalObshaya:0};
-  SELLERS.forEach(s=>{
-    const pal=Number(((sales[k]||{})[s.id]||{}).palichki||0);
-    const klArr=((klik[k]||{})[s.id])||[];
-    const kl=klArr.reduce((a,b)=>a+(Number(b)||0),0);
-    const zv=Number(((zp[k]||{})[s.id]||{}).zarplata||0);
-    const pv=Number(((zp[k]||{})[s.id]||{}).pulkira||0);
-    const kassaOylik=pal+kl;
-    const naht=pal-(zv+pv);
-    result.sellers.push({...s, pal, kl, zv, pv, kassaOylik, naht});
-    result.totalKassa+=kassaOylik;
-    result.totalNaht+=naht;
-  });
-  const expDay=exp[k]||{};
-  ['zel','pak','obed','gel','ubork','sul'].forEach(f=>result.totalMisc+=Number(expDay[f]||0));
-  result.totalObshaya=result.totalKassa+result.totalMisc;
-  return result;
-}
-
-function renderDailyCards(){
-  if(!selDailyDate)return;
-  const data=getDayData(selDailyDate);
-  const cont=document.getElementById('dailyCards');
-  let html='';
-
-  // Показываем только выбранного продавца
-  const s = data.sellers.find(s=>s.id===selDailySeller) || data.sellers[0];
-  if(s){
-    html+=`
-    <div class="daily-card">
-      <div class="daily-card-header">
-        <div class="daily-card-name" style="color:${s.color}">${shortDate(selDailyDate)} ${s.name}</div>
-        <span class="seller-badge badge-${s.cls}">${s.name}</span>
-      </div>
-      <div class="daily-row naht">
-        <span class="lbl">Нахт</span>
-        <span class="val">${fmt(s.pal)}</span>
-      </div>
-      <div class="daily-row">
-        <span class="lbl">Клик</span>
-        <span class="val" style="color:var(--blue)">${fmt(s.kl)}</span>
-      </div>
-      <div class="daily-row total">
-        <span class="lbl">Касса ойлик</span>
-        <span class="val">${fmt(s.kassaOylik)}</span>
-      </div>
-      <div class="daily-sep"></div>
-      <div class="daily-row">
-        <span class="lbl">Зарплата</span>
-        <span class="val" style="color:var(--red)">${fmt(s.zv)}</span>
-      </div>
-      <div class="daily-row">
-        <span class="lbl">Йулкира</span>
-        <span class="val" style="color:var(--red)">${fmt(s.pv)}</span>
-      </div>
-      <div class="daily-sep"></div>
-      <div class="daily-row" style="background:rgba(239,68,68,0.07);border-radius:7px;padding:5px 7px">
-        <span class="lbl" style="color:var(--text);font-weight:700">Ойлидан ташкари Расход</span>
-        <span class="val" style="color:var(--red)">${fmt(data.totalMisc)}</span>
-      </div>
-      <div class="daily-sep"></div>
-      <div class="daily-row">
-        <span class="lbl" style="color:var(--text);font-weight:700">Общая касса</span>
-        <span class="val" style="color:var(--blue)">${fmt(s.kassaOylik + data.totalMisc)}</span>
-      </div>
-      <div class="daily-row naht" style="margin-top:4px">
-        <span class="lbl">Нахт колди</span>
-        <span class="val">${fmt(s.naht)}</span>
-      </div>
-    </div>`;
-  }
-
-  // Итого за день
-  html+=`
-  <div class="card" style="border-color:rgba(34,197,94,0.3)">
-    <div class="card-title">📊 ИТОГО ЗА ДЕНЬ — ${shortDate(selDailyDate)}</div>
-    <div class="daily-row total">
-      <span class="lbl">Общая касса (все)</span>
-      <span class="val" style="color:var(--blue)">${fmt(data.totalObshaya)}</span>
-    </div>
-    <div class="daily-row naht" style="margin-top:5px">
-      <span class="lbl">Нахт колди (все)</span>
-      <span class="val">${fmt(data.totalNaht)}</span>
-    </div>
-    <div class="daily-row" style="margin-top:4px">
-      <span class="lbl" style="color:var(--muted)">Прочие расходы</span>
-      <span class="val" style="color:var(--red)">${fmt(data.totalMisc)}</span>
-    </div>
-  </div>`;
-
-  cont.innerHTML=html;
-}
-
-// ══ TELEGRAM — ДЕНЬ ══
-function sendDailyToTelegram(){
-  if(!selDailyDate){showToast('Выберите день');return;}
-  const data=getDayData(selDailyDate);
-  const n=v=>v?Number(v).toLocaleString('ru-RU'):'0';
-  let lines=[];
-  lines.push(`📅 ДНЕВНОЙ ОТЧЕТ ${shortDate(selDailyDate)}`);
-  lines.push('');
-
-  const s = data.sellers.find(s=>s.id===selDailySeller) || data.sellers[0];
-  if(s){
-    lines.push(`👤 ${shortDate(selDailyDate)} ${s.name}`);
-    lines.push(`Нахт:          ${n(s.pal)}`);
-    lines.push(`Клик:          ${n(s.kl)}`);
-    lines.push(`Касса ойлик:   ${n(s.kassaOylik)}`);
-    lines.push('');
-    lines.push(`Зарплата:      ${n(s.zv)}`);
-    lines.push(`Йулкира:       ${n(s.pv)}`);
-    lines.push('');
-    lines.push(`Ойлидан ташкари Расход: ${n(data.totalMisc)}`);
-    lines.push('');
-    lines.push(`Общий касса:   ${n(s.kassaOylik+data.totalMisc)}`);
-    lines.push(`Нахт колди:    ${n(s.naht)}`);
-    lines.push('');
-  }
-
-  lines.push(`📊 ИТОГО ЗА ДЕНЬ`);
-  lines.push(`Общая касса:   ${n(data.totalObshaya)}`);
-  lines.push(`Нахт колди:    ${n(data.totalNaht)}`);
-  lines.push(`Прочие расх:   ${n(data.totalMisc)}`);
-
-  sendViaTgBot(lines.join('\n'), 'weekTgStatus');
-}
-
-// ══ TELEGRAM — НЕДЕЛЯ ══
-function sendWeekToTelegram(){
-  const dates=getWeekDates(currentWeekOffset);
-  const sales=getSales();const zp=getZp();const klik=getKlik();const exp=getExp();
-  const n=v=>v?Number(v).toLocaleString('ru-RU'):'0';
-  let totPal=0,totKl=0,totZP=0,totPul=0,totMisc=0;
-  let lines=[];
-  lines.push(`📊 НЕДЕЛЬНЫЙ ОТЧЕТ ${shortDate(dates[0])} – ${shortDate(dates[6])}`);
-  lines.push('');
-
-  SELLERS.forEach(s=>{
-    let sPal=0,sKl=0,sZP=0,sPul=0;
-    dates.forEach(d=>{
-      const k=dateKey(d);
-      sPal+=Number(((sales[k]||{})[s.id]||{}).palichki||0);
-      const kArr=((klik[k]||{})[s.id])||[];
-      sKl+=kArr.reduce((a,b)=>a+(Number(b)||0),0);
-      sZP+=Number(((zp[k]||{})[s.id]||{}).zarplata||0);
-      sPul+=Number(((zp[k]||{})[s.id]||{}).pulkira||0);
-    });
-    totPal+=sPal;totKl+=sKl;totZP+=sZP;totPul+=sPul;
-    lines.push(`👤 ${s.name}:`);
-    lines.push(`  Палички: ${n(sPal)}  |  Клик: ${n(sKl)}`);
-    lines.push(`  Касса: ${n(sPal+sKl)}`);
-    lines.push(`  ЗП: ${n(sZP)}  |  Йулкира: ${n(sPul)}`);
-    lines.push(`  Нахт колди: ${n(sPal-(sZP+sPul))}`);
-    lines.push('');
-  });
-
-  const expCats=[['Зелень/Соль','zel'],['Пакет/Салф','pak'],['Обед/Кофе','obed'],['Гель/Азелит','gel'],['Уборка/Рем','ubork'],['Сул/Муз','sul']];
-  lines.push('🧾 Прочие расходы:');
-  expCats.forEach(([lbl,field])=>{
-    const tot=dates.reduce((a,d)=>a+Number((exp[dateKey(d)]||{})[field]||0),0);
-    if(tot>0){lines.push(`  ${lbl}: ${n(tot)}`);totMisc+=tot;}
-  });
-  lines.push('');
-
-  const kassa=totPal+totKl;
-  const naht=totPal-(totZP+totPul);
-  const obshaya=kassa+totMisc;
-  lines.push('══════════════════════');
-  lines.push(`✅ НАХТ КОЛДИ:   ${n(naht)} сум`);
-  lines.push(`💰 КАССА:        ${n(kassa)} сум`);
-  lines.push(`📦 ОБЩАЯ КАССА:  ${n(obshaya)} сум`);
-  lines.push(`💼 ЗП+Йулкира:  ${n(totZP+totPul)} сум`);
-  lines.push(`🧾 Прочие расх: ${n(totMisc)} сум`);
-  lines.push('══════════════════════');
-
-  sendViaTgBot(lines.join('\n'), 'weekTgStatus');
-}
-
-// ══ SALES INPUT ══
-let selSalesDate=null;
-function buildSalesDateSel(){buildDateSelector('dateSel',d=>{selSalesDate=d;loadSalesFields();});}
-function loadSalesFields(){
-  if(!selSalesDate)return;
-  const k=dateKey(selSalesDate); const sid=curSeller.sales;
-  const s=((getSales()[k]||{})[sid])||{};
-  document.getElementById('i-palichki').value=s.palichki||'';
-  const kArr=((getKlik()[k]||{})[sid])||[];
-  document.getElementById('i-klik').value=kArr.reduce((a,b)=>a+(Number(b)||0),0)||'';
-}
-function saveSalesData(){
-  if(!selSalesDate)return;
-  const k=dateKey(selSalesDate); const sid=curSeller.sales;
-  const all=getSales(); if(!all[k])all[k]={};
-  all[k][sid]={palichki:Number(document.getElementById('i-palichki').value)||0};
-  saveSales(all); showToast('✅ Продажи сохранены!'); renderReport();
-}
-
-// ══ ZP INPUT ══
-let selZpDate=null;
-function buildZpDateSel(){buildDateSelector('dateSelZp',d=>{selZpDate=d;loadZpFields();});}
-const FIXED_PULKIRA={'tanya':50000,'sveta':50000};
-
-function loadZpFields(){
-  if(!selZpDate)return;
-  const k=dateKey(selZpDate); const sid=curSeller.zp;
-  const z=((getZp()[k]||{})[sid])||{};
-  document.getElementById('z-zarplata').value=z.zarplata||'';
-  const inp=document.getElementById('z-pulkira');
-  if(FIXED_PULKIRA[sid]!==undefined){
-    inp.value=FIXED_PULKIRA[sid];
-    inp.readOnly=true;
-    inp.style.opacity='0.5';
-    inp.style.cursor='not-allowed';
+function loadInputFields() {
+  if (!selDate || !curSeller) return;
+  var k = dKey(selDate);
+  var s = ((D.sales()[k] || {})[curSeller]) || {};
+  var z = ((D.zp()[k] || {})[curSeller]) || {};
+  var e = D.exp()[k] || {};
+  document.getElementById('f-nal').value = s.nalichka || '';
+  document.getElementById('f-zp').value = z.zarplata || '';
+  var pi = document.getElementById('f-pul');
+  if (FIXED_PUL[curSeller] !== undefined) {
+    pi.value = FIXED_PUL[curSeller];
+    pi.classList.add('ro');
+    pi.readOnly = true;
   } else {
-    inp.value=z.pulkira||'';
-    inp.readOnly=false;
-    inp.style.opacity='1';
-    inp.style.cursor='';
+    pi.value = z.pulkira || '';
+    pi.classList.remove('ro');
+    pi.readOnly = false;
   }
-}
-function saveZpData(){
-  if(!selZpDate)return;
-  const k=dateKey(selZpDate); const sid=curSeller.zp;
-  const all=getZp(); if(!all[k])all[k]={};
-  const pulkira=FIXED_PULKIRA[sid]!==undefined ? FIXED_PULKIRA[sid] : (Number(document.getElementById('z-pulkira').value)||0);
-  all[k][sid]={zarplata:Number(document.getElementById('z-zarplata').value)||0, pulkira};
-  saveZp(all); showToast('✅ Зарплата сохранена!'); renderReport();
-}
-
-// ══ EXPENSE INPUT ══
-let selExpDate=null;
-function buildExpDateSel(){buildDateSelector('dateSelExp',d=>{selExpDate=d;loadExpFields();});}
-function loadExpFields(){
-  if(!selExpDate)return;
-  const k=dateKey(selExpDate); const e=getExp()[k]||{};
-  ['zel','pak','obed','gel','ubork','sul'].forEach(f=>document.getElementById('e-'+f).value=e[f]||'');
-}
-function saveExpenseData(){
-  if(!selExpDate)return;
-  const k=dateKey(selExpDate); const all=getExp();
-  all[k]={zel:+document.getElementById('e-zel').value||0,pak:+document.getElementById('e-pak').value||0,
-    obed:+document.getElementById('e-obed').value||0,gel:+document.getElementById('e-gel').value||0,
-    ubork:+document.getElementById('e-ubork').value||0,sul:+document.getElementById('e-sul').value||0};
-  saveExp(all); showToast('✅ Расходы сохранены!'); renderReport();
+  EXP_FIELDS.forEach(function(f) {
+    var el = document.getElementById('e-' + f);
+    if (el) el.value = e[f] || '';
+  });
+  var kArr = ((D.klik()[k] || {})[curSeller]) || [0];
+  renderKrows(kArr);
+  calcTotals();
+  setSt('saveSt', '');
 }
 
-// ══ KLIK INPUT ══
-let selKlikDate=null;
-function buildKlikDateSel(){buildDateSelector('dateSelKlik',d=>{selKlikDate=d;loadKlikFields();});}
-function loadKlikFields(){
-  if(!selKlikDate)return;
-  const k=dateKey(selKlikDate); const sid=curSeller.klik;
-  const vals=((getKlik()[k]||{})[sid])||[0];
-  renderKlikRows(vals);
+function calcTotals() {
+  var ks = 0;
+  document.querySelectorAll('#krows input').forEach(function(i) { ks += num(i.value); });
+  document.getElementById('kTotal').textContent = fmt(ks);
+  var nal = num(document.getElementById('f-nal').value);
+  document.getElementById('totalSale').textContent = fmt(nal + ks);
 }
-function renderKlikRows(vals){
-  const cont=document.getElementById('klikRows'); cont.innerHTML='';
-  vals.forEach((v,i)=>{
-    const row=document.createElement('div');row.className='klik-row';
-    row.innerHTML=`<input type="number" inputmode="numeric" value="${v||''}" placeholder="0" oninput="updateKlikTotal()">
-      ${i>0?`<button class="remove-btn" onclick="removeKlikRow(this)">✕</button>`:'<div style="width:32px"></div>'}`;
+
+function renderKrows(vals) {
+  var cont = document.getElementById('krows');
+  cont.innerHTML = '';
+  vals.forEach(function(v, i) {
+    var row = document.createElement('div');
+    row.className = 'krow';
+    var inp = document.createElement('input');
+    inp.type = 'number';
+    inp.inputMode = 'numeric';
+    inp.value = v || '';
+    inp.placeholder = '0';
+    inp.oninput = function() { calcTotals(); autoSave(); };
+    row.appendChild(inp);
+    if (i > 0) {
+      var btn = document.createElement('button');
+      btn.className = 'kdel';
+      btn.textContent = 'x';
+      btn.onclick = function() { row.remove(); calcTotals(); autoSave(); };
+      row.appendChild(btn);
+    } else {
+      var ph = document.createElement('div');
+      ph.style.width = '32px';
+      row.appendChild(ph);
+    }
     cont.appendChild(row);
   });
-  updateKlikTotal();
-}
-function addKlikRow(){
-  const cont=document.getElementById('klikRows'); const row=document.createElement('div');
-  row.className='klik-row';
-  row.innerHTML=`<input type="number" inputmode="numeric" placeholder="0" oninput="updateKlikTotal()"><button class="remove-btn" onclick="removeKlikRow(this)">✕</button>`;
-  cont.appendChild(row); updateKlikTotal();
-}
-function removeKlikRow(btn){btn.parentElement.remove();updateKlikTotal();}
-function updateKlikTotal(){
-  let s=0;document.querySelectorAll('#klikRows input').forEach(i=>s+=Number(i.value)||0);
-  document.getElementById('klikTotal').textContent=fmt(s);
-}
-function saveKlikData(){
-  if(!selKlikDate)return;
-  const k=dateKey(selKlikDate); const sid=curSeller.klik;
-  const vals=Array.from(document.querySelectorAll('#klikRows input')).map(i=>Number(i.value)||0);
-  const all=getKlik(); if(!all[k])all[k]={};
-  all[k][sid]=vals; saveKlik(all);
-  showToast('✅ Клик сохранён!');
-  document.getElementById('i-klik').value=vals.reduce((a,b)=>a+b,0)||'';
-  renderReport();
+  calcTotals();
 }
 
-// ══ PAGE NAV ══
-function showPage(id,btn){
-  const PAGES_LIST=['report','daily','sales','zp','expenses','klik','settings'];
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  btn.classList.add('active');
-  // обновить точки
-  const idx=PAGES_LIST.indexOf(id);
-  const dots=document.querySelectorAll('.swipe-dot');
-  dots.forEach((d,i)=>d.classList.toggle('active',i===idx));
-  if(id==='daily')buildDayPicker();
-  if(id==='settings'){loadTgSettings();loadScriptUrl();}
-  if(id==='sales')buildSalesDateSel();
-  if(id==='zp')buildZpDateSel();
-  if(id==='expenses')buildExpDateSel();
-  if(id==='klik')buildKlikDateSel();
+function addKrow() {
+  var cont = document.getElementById('krows');
+  var row = document.createElement('div');
+  row.className = 'krow';
+  var inp = document.createElement('input');
+  inp.type = 'number';
+  inp.inputMode = 'numeric';
+  inp.placeholder = '0';
+  inp.oninput = function() { calcTotals(); autoSave(); };
+  var btn = document.createElement('button');
+  btn.className = 'kdel';
+  btn.textContent = 'x';
+  btn.onclick = function() { row.remove(); calcTotals(); autoSave(); };
+  row.appendChild(inp);
+  row.appendChild(btn);
+  cont.appendChild(row);
+  calcTotals();
 }
 
-// ══ TOAST ══
-function showToast(msg){
-  const t=document.getElementById('toast');t.textContent=msg;
-  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);
+function autoSave() {
+  clearTimeout(saveTimer);
+  setSt('saveSt', 'сақланяпти...', 'ld');
+  saveTimer = setTimeout(function() {
+    saveFields();
+    setSt('saveSt', 'сақланди', 'ok');
+    setTimeout(function() { setSt('saveSt', ''); }, 2000);
+    if (curPage === 2) renderWeek();
+    var url = localStorage.getItem('sheetUrl') || '';
+    if (url) syncSheets(true);
+  }, 700);
 }
 
-// ══ TELEGRAM BOT ══
-function saveTgSettings(){
-  localStorage.setItem('tgToken', document.getElementById('tgToken').value.trim());
-  localStorage.setItem('tgChatId', document.getElementById('tgChatId').value.trim());
-}
-
-function loadTgSettings(){
-  const token = localStorage.getItem('tgToken')||'';
-  const chatId = localStorage.getItem('tgChatId')||'';
-  const t = document.getElementById('tgToken');
-  const c = document.getElementById('tgChatId');
-  if(t) t.value = token;
-  if(c) c.value = chatId;
-}
-
-async function sendViaTgBot(text, statusId){
-  const token  = localStorage.getItem('tgToken')||'';
-  const chatId = localStorage.getItem('tgChatId')||'';
-
-  if(!token || !chatId){
-    // Fallback — открыть через share
-    window.open('https://t.me/share/url?url=&text='+encodeURIComponent(text),'_blank');
-    showEl(statusId, '📤 Откройте Telegram и выберите чат', '');
-    return;
-  }
-
-  showEl(statusId, '⏳ Отправка...', '');
-  try {
-    const url = 'https://api.telegram.org/bot'+token+'/sendMessage';
-    const resp = await fetch(url, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({chat_id: chatId, text: text, parse_mode:'HTML'})
-    });
-    const json = await resp.json();
-    if(json.ok){
-      showEl(statusId, '✅ Отправлено в Telegram!', 'ok');
-    } else {
-      showEl(statusId, '❌ Ошибка: '+json.description, 'err');
-    }
-  } catch(e){
-    showEl(statusId, '❌ '+e.message, 'err');
-  }
-}
-
-async function testTgBot(){
-  const token  = document.getElementById('tgToken').value.trim();
-  const chatId = document.getElementById('tgChatId').value.trim();
-  if(!token||!chatId){ showEl('tgTestStatus','Введите TOKEN и Chat ID','err'); return; }
-  showEl('tgTestStatus','⏳ Отправка теста...','');
-  try {
-    const resp = await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({chat_id:chatId, text:'✅ Бот подключён! Отчёты будут приходить сюда 🎉'})
-    });
-    const json = await resp.json();
-    if(json.ok) showEl('tgTestStatus','✅ Тест успешен! Проверьте Telegram','ok');
-    else showEl('tgTestStatus','❌ '+json.description,'err');
-  } catch(e){ showEl('tgTestStatus','❌ '+e.message,'err'); }
-}
-
-function showEl(id, msg, cls){
-  const el=document.getElementById(id);
-  if(!el)return;
-  el.textContent=msg;
-  el.className='sync-status'+(cls?' '+cls:'');
-}
-
-// ══ GOOGLE SHEETS SYNC ══
-function saveScriptUrl(){
-  localStorage.setItem('scriptUrl', document.getElementById('scriptUrl').value.trim());
-}
-
-function loadScriptUrl(){
-  const url = localStorage.getItem('scriptUrl')||'';
-  document.getElementById('scriptUrl').value = url;
-}
-
-async function syncToGoogleSheets(){
-  const url = localStorage.getItem('scriptUrl')||'';
-  if(!url){
-    showSyncStatus('Вставьте URL скрипта в ⚙️ НАСТРОЙКИ!', 'err');
-    return;
-  }
-
-  const btn = document.getElementById('syncBtn');
-  if(btn){ btn.classList.add('syncing'); btn.textContent = '⏳ ОТПРАВКА...'; }
-  showSyncStatus('Подключаюсь к Google Таблице...', '');
-
-  const dates = getWeekDates(currentWeekOffset);
-  const dateKeys = dates.map(d => dateKey(d));
-  const dateLabels = dates.map(d =>
-    d.getDate()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+d.getFullYear()
-  );
-
-  const payload = {
-    action: 'syncAll',
-    weekLabel: shortDate(dates[dates.length-1]),
-    dates: dateKeys,
-    dateLabels: dateLabels,
-    sellers: SELLERS.map(s=>({id:s.id, name:s.name})),
-    sales: getSales(),
-    zp: getZp(),
-    klik: getKlik(),
-    exp: getExp(),
+function saveFields() {
+  if (!selDate || !curSeller) return;
+  var k = dKey(selDate);
+  var sales = D.sales();
+  if (!sales[k]) sales[k] = {};
+  sales[k][curSeller] = {nalichka: num(document.getElementById('f-nal').value)};
+  D.setSales(sales);
+  var zp = D.zp();
+  if (!zp[k]) zp[k] = {};
+  zp[k][curSeller] = {
+    zarplata: num(document.getElementById('f-zp').value),
+    pulkira: FIXED_PUL[curSeller] !== undefined ? FIXED_PUL[curSeller] : num(document.getElementById('f-pul').value)
   };
+  D.setZp(zp);
+  var klik = D.klik();
+  if (!klik[k]) klik[k] = {};
+  klik[k][curSeller] = [];
+  document.querySelectorAll('#krows input').forEach(function(i) { klik[k][curSeller].push(num(i.value)); });
+  D.setКлик(klik);
+  var exp = D.exp();
+  exp[k] = {};
+  EXP_FIELDS.forEach(function(f) {
+    var el = document.getElementById('e-' + f);
+    if (el) exp[k][f] = num(el.value);
+  });
+  D.setExp(exp);
+}
 
-  // Google Apps Script требует no-cors — ответ не читается, но данные доходят
-  try {
-    await fetch(url, {
-      method: 'POST',
-      headers: {'Content-Type': 'text/plain'}, // text/plain обходит preflight
-      body: JSON.stringify(payload),
-      mode: 'no-cors'
+// === DAY PAGE ===
+function initDayPage() {
+  buildPills('dayDays', function(d) { selDayDate = d; renderDayCard(); }, selDayDate);
+}
+
+function getDayData(d) {
+  var k = dKey(d), S = D.sales(), Z = D.zp(), K = D.klik(), E = D.exp();
+  var sellers = SELLERS.map(function(sl) {
+    var nal = num(((S[k] || {})[sl.id] || {}).nalichka);
+    var kArr = ((K[k] || {})[sl.id]) || [];
+    var ksum = kArr.reduce(function(a, b) { return a + num(b); }, 0);
+    var zv = num(((Z[k] || {})[sl.id] || {}).zarplata);
+    var pv = num(((Z[k] || {})[sl.id] || {}).pulkira);
+    return {id:sl.id, name:sl.name, cls:sl.cls, nal:nal, ksum:ksum, zv:zv, pv:pv, kassa:nal+ksum, нахт:nal-(zv+pv)};
+  });
+  var misc = EXP_FIELDS.reduce(function(a, f) { return a + num((E[k] || {})[f]); }, 0);
+  return {sellers:sellers, misc:misc};
+}
+
+function renderDayCard() {
+  if (!selDayDate) return;
+  var data = getDayData(selDayDate);
+  var s = data.sellers.find(function(x) { return x.id === curDaySeller; }) || data.sellers[0];
+  if (!s) return;
+  var clrMap = {t:'var(--pu)', s:'var(--tl)', d:'var(--am)'};
+  var clr = clrMap[s.cls] || 'var(--gr)';
+  document.getElementById('dayCard').innerHTML =
+    '<div class="dcard">' +
+    '<div class="dhead"><div class="dname" style="color:' + clr + '">' + dFull(selDayDate) + ' ' + s.name + '</div>' +
+    '<span class="badge ' + s.cls + '">' + s.name + '</span></div>' +
+    '<div class="drow нахт"><span class="dl">Нақд пул</span><span class="dv">' + fmt(s.nal) + '</span></div>' +
+    '<div class="drow"><span class="dl">Клик</span><span class="dv" style="color:var(--bl)">' + fmt(s.ksum) + '</span></div>' +
+    '<div class="drow tot"><span class="dl">Касса ойлик</span><span class="dv">' + fmt(s.kassa) + '</span></div>' +
+    '<div class="dsep"></div>' +
+    '<div class="drow"><span class="dl">Маош</span><span class="dv" style="color:var(--rd)">' + fmt(s.zv) + '</span></div>' +
+    '<div class="drow"><span class="dl">Юлқира</span><span class="dv" style="color:var(--rd)">' + fmt(s.pv) + '</span></div>' +
+    '<div class="dsep"></div>' +
+    '<div class="drow" style="background:rgba(239,68,68,.07);border-radius:7px;padding:5px 7px">' +
+    '<span class="dl" style="color:var(--tx);font-weight:700">Ойлик ташқари харажат</span>' +
+    '<span class="dv" style="color:var(--rd)">' + fmt(data.misc) + '</span></div>' +
+    '<div class="dsep"></div>' +
+    '<div class="drow tot"><span class="dl">Умумий касса</span><span class="dv">' + fmt(s.kassa + data.misc) + '</span></div>' +
+    '<div class="drow нахт" style="margin-top:4px"><span class="dl">Нахт қолди</span><span class="dv">' + fmt(s.нахт) + '</span></div>' +
+    '</div>';
+}
+
+// === WEEK TOTALS ===
+function getWeekTotals(off) {
+  var dates = getWeekDates(off);
+  var S = D.sales(), Z = D.zp(), K = D.klik(), E = D.exp();
+  var totНақд = 0, totKl = 0, totZP = 0, totPul = 0, totMisc = 0;
+  dates.forEach(function(d) {
+    var k = dKey(d);
+    SELLERS.forEach(function(sl) {
+      totНақд += num(((S[k] || {})[sl.id] || {}).nalichka);
+      var kArr = ((K[k] || {})[sl.id]) || [];
+      kArr.forEach(function(v) { totKl += num(v); });
+      totZP += num(((Z[k] || {})[sl.id] || {}).zarplata);
+      totPul += num(((Z[k] || {})[sl.id] || {}).pulkira);
     });
-    showSyncStatus('✅ Данные отправлены! Проверьте таблицу.', 'ok');
-    showToast('✅ Google Таблица обновлена!');
-  } catch(e) {
-    showSyncStatus('❌ Ошибка соединения: ' + e.message, 'err');
-  }
-
-  if(btn){
-    btn.classList.remove('syncing');
-    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M4 4v5h5M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14.93-2M20 15a8 8 0 0 1-14.93 2"/></svg> СИНХРОНИЗИРОВАТЬ';
-  }
+    EXP_FIELDS.forEach(function(f) { totMisc += num((E[k] || {})[f]); });
+  });
+  var kassa = totНақд + totKl;
+  var нахт = totНақд - (totZP + totPul);
+  return {kassa:kassa, нахт:нахт, misc:totMisc, obsh:kassa+totMisc, zp:totZP+totPul};
 }
 
-function showSyncStatus(msg, cls){
-  const el = document.getElementById('syncStatus');
-  el.textContent = msg;
-  el.className = 'sync-status' + (cls ? ' '+cls : '');
+// === WEEK PAGE ===
+function renderWeek() {
+  var dates = getWeekDates(weekOffset);
+  var todayStr = dKey(new Date());
+  var S = D.sales(), Z = D.zp(), K = D.klik(), E = D.exp();
+  var totНақд = 0, totKl = 0, totZP = 0, totPul = 0, totMisc = 0;
+
+  // Sales header
+  document.getElementById('wSH').innerHTML = '<th>Сотувчи</th>' +
+    dates.map(function(d) { return '<th class="' + (dKey(d)===todayStr?'tday':'') + '">' + dShort(d) + '</th>'; }).join('') + '<th>ЖМИ</th>';
+
+  var sb = '';
+  SELLERS.forEach(function(sl) {
+    var pv = dates.map(function(d) { return num(((S[dKey(d)]||{})[sl.id]||{}).nalichka); });
+    var kv = dates.map(function(d) { var a=((K[dKey(d)]||{})[sl.id])||[]; return a.reduce(function(x,y){return x+num(y);},0); });
+    var tp = pv.reduce(function(a,b){return a+b;},0), tk = kv.reduce(function(a,b){return a+b;},0);
+    totНақд += tp; totKl += tk;
+    var clrMap = {t:'var(--pu)',s:'var(--tl)',d:'var(--am)'};
+    var clr = clrMap[sl.cls] || 'var(--gr)';
+    sb += '<tr><td style="color:' + clr + ';font-weight:700">' + sl.name + ' Нақд</td>' +
+      pv.map(function(v,i){return '<td class="'+(dKey(dates[i])===todayStr?'tday':'')+'">' + fmt(v) + '</td>';}).join('') +
+      '<td style="color:' + clr + '">' + fmt(tp) + '</td></tr>';
+    sb += '<tr><td style="color:var(--bl)"> Клик</td>' +
+      kv.map(function(v,i){return '<td class="'+(dKey(dates[i])===todayStr?'tday':'')+'">' + fmt(v) + '</td>';}).join('') +
+      '<td style="color:var(--bl)">' + fmt(tk) + '</td></tr>';
+  });
+  var kassaDay = dates.map(function(d) {
+    var v = 0;
+    SELLERS.forEach(function(sl) {
+      v += num(((S[dKey(d)]||{})[sl.id]||{}).nalichka);
+      var a = ((K[dKey(d)]||{})[sl.id])||[];
+      a.forEach(function(x){v+=num(x);});
+    });
+    return v;
+  });
+  sb += '<tr class="trg"><td>КАССА</td>' +
+    kassaDay.map(function(v,i){return '<td class="'+(dKey(dates[i])===todayStr?'tday':'')+'">'+fmt(v)+'</td>';}).join('') +
+    '<td>' + fmt(totНақд+totKl) + '</td></tr>';
+  document.getElementById('wSB').innerHTML = sb;
+
+  // ZP
+  document.getElementById('wZH').innerHTML = '<th>Сотувчи</th>' +
+    dates.map(function(d){return '<th class="'+(dKey(d)===todayStr?'tday':'')+'">'+dShort(d)+'</th>';}).join('') + '<th>ЖМИ</th>';
+  var zb = '';
+  SELLERS.forEach(function(sl) {
+    var zv = dates.map(function(d){return num(((Z[dKey(d)]||{})[sl.id]||{}).zarplata);});
+    var pv = dates.map(function(d){return num(((Z[dKey(d)]||{})[sl.id]||{}).pulkira);});
+    var tz = zv.reduce(function(a,b){return a+b;},0), tp = pv.reduce(function(a,b){return a+b;},0);
+    totZP += tz; totPul += tp;
+    var clrMap = {t:'var(--pu)',s:'var(--tl)',d:'var(--am)'};
+    var clr = clrMap[sl.cls] || 'var(--gr)';
+    zb += '<tr><td style="color:' + clr + ';font-weight:700">' + sl.name + ' Маош</td>' +
+      zv.map(function(v,i){return '<td class="'+(dKey(dates[i])===todayStr?'tday':'')+'">'+fmt(v)+'</td>';}).join('') +
+      '<td style="color:' + clr + '">' + fmt(tz) + '</td></tr>';
+    zb += '<tr class="trr"><td> Юлқира</td>' +
+      pv.map(function(v,i){return '<td class="'+(dKey(dates[i])===todayStr?'tday':'')+'">'+fmt(v)+'</td>';}).join('') +
+      '<td>' + fmt(tp) + '</td></tr>';
+  });
+  var zpDay = dates.map(function(d){
+    var v=0; SELLERS.forEach(function(sl){v+=num(((Z[dKey(d)]||{})[sl.id]||{}).zarplata)+num(((Z[dKey(d)]||{})[sl.id]||{}).pulkira);}); return v;
+  });
+  zb += '<tr class="trg"><td>ЖМИ МА</td>' +
+    zpDay.map(function(v,i){return '<td class="'+(dKey(dates[i])===todayStr?'tday':'')+'">'+fmt(v)+'</td>';}).join('') +
+    '<td>' + fmt(totZP+totPul) + '</td></tr>';
+  document.getElementById('wZB').innerHTML = zb;
+
+  // Exp
+  document.getElementById('wEH').innerHTML = '<th>Модда</th>' +
+    dates.map(function(d){return '<th class="'+(dKey(d)===todayStr?'tday':'')+'">'+dShort(d)+'</th>';}).join('') + '<th>ЖМИ</th>';
+  var eb = '', expDay = new Array(7).fill(0);
+  EXP_FIELDS.forEach(function(f, fi) {
+    var vals = dates.map(function(d, i) { var v = num((E[dKey(d)]||{})[f]); expDay[i]+=v; totMisc+=v; return v; });
+    var tot = vals.reduce(function(a,b){return a+b;},0);
+    eb += '<tr><td>' + EXP_LABELS[fi] + '</td>' +
+      vals.map(function(v,i){return '<td class="'+(dKey(dates[i])===todayStr?'tday':'')+'">'+fmt(v)+'</td>';}).join('') +
+      '<td style="color:var(--rd)">' + fmt(tot) + '</td></tr>';
+  });
+  var expTot = expDay.reduce(function(a,b){return a+b;},0);
+  eb += '<tr class="tra"><td>ЖАМИ</td>' +
+    expDay.map(function(v,i){return '<td class="'+(dKey(dates[i])===todayStr?'tday':'')+'">'+fmt(v)+'</td>';}).join('') +
+    '<td>' + fmt(expTot) + '</td></tr>';
+  document.getElementById('wEB').innerHTML = eb;
+
+  // Summary
+  var kassa = totНақд + totKl;
+  var нахт = totНақд - (totZP + totPul);
+  var obsh = kassa + totMisc;
+  document.getElementById('wNaht').textContent = fmt(нахт);
+  document.getElementById('wКасса').textContent = fmt(kassa);
+  document.getElementById('wObsh').textContent = fmt(obsh);
+  document.getElementById('wMisc').textContent = fmt(totMisc);
+  var pct = kassa > 0 ? Math.round((нахт/kassa)*100) : 0;
+  document.getElementById('wPct').textContent = pct + '%';
+  document.getElementById('wBar').style.width = Math.max(0, Math.min(100, pct)) + '%';
+
+  renderChart();
+  renderCompare();
+  renderBest(dates);
 }
 
-// ══ СВАЙП ══
+// === CHART ===
+function drawChart(canvasId, lines, labels) {
+  var old = document.getElementById(canvasId);
+  if (!old) return;
+  var canvas = document.createElement('canvas');
+  canvas.id = canvasId;
+  old.parentNode.replaceChild(canvas, old);
+  var W = canvas.offsetWidth || canvas.parentElement.offsetWidth || 300, H = 130;
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  var allVals = [];
+  lines.forEach(function(l) { l.vals.forEach(function(v) { if (v > 0) allVals.push(v); }); });
+  var maxV = allVals.length ? Math.max.apply(null, allVals) * 1.15 : 1;
+  var pad = {l:8, r:8, t:12, b:26};
+  var pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+  var n = labels.length;
+  var xs = labels.map(function(_, i) { return pad.l + (n > 1 ? pw * i / (n-1) : pw/2); });
+  var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  var gc = dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)';
+  var tc = dark ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.35)';
+  ctx.strokeStyle = gc; ctx.lineWidth = 1;
+  for (var gi = 0; gi <= 4; gi++) {
+    var gy = pad.t + ph * (1 - gi/4);
+    ctx.beginPath(); ctx.moveTo(pad.l, gy); ctx.lineTo(W-pad.r, gy); ctx.stroke();
+  }
+  lines.forEach(function(line) {
+    var vals = line.vals, color = line.color, dashed = line.dashed;
+    if (!vals.some(function(v){return v>0;})) return;
+    ctx.save();
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2.5;
+    if (dashed) ctx.setLineDash([5,3]); else ctx.setLineDash([]);
+    vals.forEach(function(v, i) {
+      var x = xs[i], y = pad.t + ph * (1 - v/maxV);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    vals.forEach(function(v, i) {
+      if (!v) return;
+      var x = xs[i], y = pad.t + ph * (1 - v/maxV);
+      ctx.beginPath(); ctx.fillStyle = color; ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fill();
+    });
+    ctx.restore();
+  });
+  ctx.fillStyle = tc; ctx.font = '10px Manrope'; ctx.textAlign = 'center';
+  labels.forEach(function(l, i) { ctx.fillText(l, xs[i], H-6); });
+}
+
+function renderChart() {
+  var weeks = [-3,-2,-1,0].map(function(off) { return {t:getWeekTotals(weekOffset+off), d:getWeekDates(weekOffset+off)}; });
+  drawChart('salesChart', [
+    {vals:weeks.map(function(w){return w.t.kassa;}), color:'#22c55e'},
+    {vals:weeks.map(function(w){return w.t.нахт;}), color:'#3b82f6'},
+    {vals:weeks.map(function(w){return w.t.misc;}), color:'#ef4444', dashed:true}
+  ], weeks.map(function(w){return dShort(w.d[0]);}));
+}
+
+function renderCompare() {
+  var cur = getWeekTotals(weekOffset), prev = getWeekTotals(weekOffset-1);
+  var items = [
+    {label:'КАССА', cur:cur.kassa, prev:prev.kassa},
+    {label:'НАХТ ҚОЛДИ', cur:cur.нахт, prev:prev.нахт},
+    {label:'ХАРАЖАТ', cur:cur.misc, prev:prev.misc},
+    {label:'УМУМИЙ', cur:cur.obsh, prev:prev.obsh}
+  ];
+  document.getElementById('cmpGrid').innerHTML = items.map(function(it) {
+    var diff = it.cur - it.prev;
+    var pct = it.prev > 0 ? Math.round((diff/it.prev)*100) : 0;
+    var cls = diff > 0 ? 'up' : diff < 0 ? 'dn' : 'eq';
+    var arrow = diff > 0 ? '+' : diff < 0 ? '-' : '=';
+    return '<div class="cmpbox"><div class="cmpttl">' + it.label + '</div>' +
+      '<div class="cmpval">' + fmt(it.cur) + '</div>' +
+      '<div class="cmpdiff ' + cls + '">' + arrow + Math.abs(pct) + '% олдинги ҳафтага</div></div>';
+  }).join('');
+}
+
+function renderBest(dates) {
+  var S = D.sales(), K = D.klik();
+  var dayK = dates.map(function(d) {
+    var v = 0;
+    SELLERS.forEach(function(sl) {
+      v += num(((S[dKey(d)]||{})[sl.id]||{}).nalichka);
+      var a = ((K[dKey(d)]||{})[sl.id])||[];
+      a.forEach(function(x){v+=num(x);});
+    });
+    return {date:d, kassa:v};
+  }).sort(function(a,b){return b.kassa-a.kassa;});
+  var rnks = ['g1','g2','g3'];
+  document.getElementById('bestDay').innerHTML = dayK.slice(0,3).map(function(it,i) {
+    return '<div class="brow"><div class="brnk ' + (rnks[i]||'') + '">' + (i+1) + '</div>' +
+      '<div class="binfo"><div class="bnm">' + DR[it.date.getDay()] + ' ' + dShort(it.date) + '</div></div>' +
+      '<div class="bval">' + fmt(it.kassa) + '</div></div>';
+  }).join('');
+  var selK = SELLERS.map(function(sl) {
+    var v = 0;
+    dates.forEach(function(d) {
+      v += num(((S[dKey(d)]||{})[sl.id]||{}).nalichka);
+      var a = ((K[dKey(d)]||{})[sl.id])||[];
+      a.forEach(function(x){v+=num(x);});
+    });
+    return {id:sl.id, name:sl.name, cls:sl.cls, kassa:v};
+  }).sort(function(a,b){return b.kassa-a.kassa;});
+  var clrMap = {t:'var(--pu)',s:'var(--tl)',d:'var(--am)'};
+  document.getElementById('bestSel').innerHTML = selK.map(function(s,i) {
+    return '<div class="brow"><div class="brnk ' + (rnks[i]||'') + '">' + (i+1) + '</div>' +
+      '<div class="binfo"><div class="bnm" style="color:' + (clrMap[s.cls]||'var(--gr)') + '">' + s.name + '</div></div>' +
+      '<div class="bval">' + fmt(s.kassa) + '</div></div>';
+  }).join('');
+}
+
+// === MONTH ===
+function renderMonth() {
+  var now = new Date();
+  var months = [];
+  for (var i = 5; i >= 0; i--) {
+    var d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    months.push({y:d.getFullYear(), m:d.getMonth()});
+  }
+  var tabs = document.getElementById('monthTabs');
+  tabs.innerHTML = months.map(function(mo) {
+    var on = mo.y === selMonth.y && mo.m === selMonth.m;
+    return '<button class="mtab' + (on?' on':'') + '" onclick="selMo(' + mo.y + ',' + mo.m + ',this)">' + MONTHS[mo.m].slice(0,3) + ' ' + String(mo.y).slice(2) + '</button>';
+  }).join('');
+  calcMonthStats();
+}
+
+function selMo(y, m, btn) {
+  selMonth = {y:y, m:m};
+  document.querySelectorAll('.mtab').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  calcMonthStats();
+}
+
+function getMonthDays() {
+  var days = [], dim = new Date(selMonth.y, selMonth.m+1, 0).getDate();
+  for (var d = 1; d <= dim; d++) days.push(new Date(selMonth.y, selMonth.m, d));
+  return days;
+}
+
+function getMonthWeeks() {
+  var days = getMonthDays();
+  var S = D.sales(), K = D.klik(), Z = D.zp(), E = D.exp();
+  var weeks = [];
+  for (var i = 0; i < days.length; i += 7) {
+    var chunk = days.slice(i, i+7);
+    var kassa = 0, нахт = 0, misc = 0;
+    chunk.forEach(function(d) {
+      var k = dKey(d);
+      SELLERS.forEach(function(sl) {
+        var nal = num(((S[k]||{})[sl.id]||{}).nalichka);
+        var kArr = ((K[k]||{})[sl.id])||[];
+        var kl = kArr.reduce(function(a,b){return a+num(b);},0);
+        var zv = num(((Z[k]||{})[sl.id]||{}).zarplata);
+        var pv = num(((Z[k]||{})[sl.id]||{}).pulkira);
+        kassa += nal+kl; нахт += nal-(zv+pv);
+      });
+      EXP_FIELDS.forEach(function(f){misc+=num((E[k]||{})[f]);});
+    });
+    weeks.push({dates:chunk, kassa:kassa, нахт:нахт, misc:misc});
+  }
+  return weeks;
+}
+
+function calcMonthStats() {
+  var weeks = getMonthWeeks();
+  var totK = 0, totN = 0, totM = 0;
+  weeks.forEach(function(w){totK+=w.kassa;totN+=w.нахт;totM+=w.misc;});
+  document.getElementById('mNaht').textContent = fmt(totN);
+  document.getElementById('mКасса').textContent = fmt(totK);
+  document.getElementById('mObsh').textContent = fmt(totK+totM);
+  document.getElementById('mMisc').textContent = fmt(totM);
+  drawChart('monthChart', [
+    {vals:weeks.map(function(w){return w.kassa;}), color:'#22c55e'},
+    {vals:weeks.map(function(w){return w.нахт;}), color:'#3b82f6'}
+  ], weeks.map(function(w){return dShort(w.dates[0]);}));
+  var allDays = getMonthDays();
+  var S = D.sales(), K = D.klik();
+  var clrMap = {t:'var(--pu)',s:'var(--tl)',d:'var(--am)'};
+  var rnks = ['g1','g2','g3'];
+  var selTots = SELLERS.map(function(sl) {
+    var v = 0;
+    allDays.forEach(function(d) {
+      v += num(((S[dKey(d)]||{})[sl.id]||{}).nalichka);
+      var a = ((K[dKey(d)]||{})[sl.id])||[];
+      a.forEach(function(x){v+=num(x);});
+    });
+    return {id:sl.id, name:sl.name, cls:sl.cls, kassa:v};
+  }).sort(function(a,b){return b.kassa-a.kassa;});
+  document.getElementById('mBest').innerHTML = selTots.map(function(s,i) {
+    return '<div class="brow"><div class="brnk ' + (rnks[i]||'') + '">' + (i+1) + '</div>' +
+      '<div class="binfo"><div class="bnm" style="color:' + (clrMap[s.cls]||'var(--gr)') + '">' + s.name + '</div></div>' +
+      '<div class="bval">' + fmt(s.kassa) + '</div></div>';
+  }).join('');
+  document.getElementById('mWeeks').innerHTML = weeks.length ? weeks.map(function(w,i) {
+    return '<div class="brow">' +
+      '<div class="brnk" style="font-size:12px;color:var(--mt);width:30px">' + (i+1) + 'n</div>' +
+      '<div class="binfo"><div class="bnm" style="font-size:11px">' + dShort(w.dates[0]) + '-' + dShort(w.dates[w.dates.length-1]) + '</div>' +
+      '<div class="bsub">Харажатлар: ' + fmt(w.misc) + '</div></div>' +
+      '<div style="text-align:right"><div class="bval">' + fmt(w.kassa) + '</div>' +
+      '<div style="font-size:9px;color:var(--gr)">' + fmt(w.нахт) + ' нахт</div></div></div>';
+  }).join('') : '<div style="color:var(--mt);font-size:12px;text-align:center;padding:12px">Маълумот йўқ</div>';
+}
+
+// === QUICK PAGE ===
+function initQuickPage() {
+  buildPills('quickDays', function(d) { selQuickDate = d; renderQHist(); }, selQuickDate);
+  renderQHist();
+}
+
+function qSel(type, btn) {
+  quickType = type;
+  document.querySelectorAll('.qtype').forEach(function(b) {
+    b.className = 'qtype';
+  });
+  btn.className = 'qtype on-' + type;
+  qUpdate();
+}
+
+function qUpdate() {
+  var v = num(document.getElementById('qAmt').value);
+  var btn = document.getElementById('qBtn');
+  if (v > 0) { btn.classList.add('active'); }
+  else { btn.classList.remove('active'); }
+}
+
+function qSave() {
+  var v = num(document.getElementById('qAmt').value);
+  if (!v || !selQuickDate || !curQuickSeller) { setSt('qSt', 'Суммани киритинг!', 'err'); return; }
+  var k = dKey(selQuickDate);
+  if (quickType === 'nal') {
+    var sales = D.sales(); if (!sales[k]) sales[k] = {}; if (!sales[k][curQuickSeller]) sales[k][curQuickSeller] = {};
+    sales[k][curQuickSeller].nalichka = (sales[k][curQuickSeller].nalichka||0) + v; D.setSales(sales);
+  } else if (quickType === 'kl') {
+    var klik = D.klik(); if (!klik[k]) klik[k] = {}; if (!klik[k][curQuickSeller]) klik[k][curQuickSeller] = [];
+    klik[k][curQuickSeller].push(v); D.setКлик(klik);
+  } else if (quickType === 'zp') {
+    var zp = D.zp(); if (!zp[k]) zp[k] = {}; if (!zp[k][curQuickSeller]) zp[k][curQuickSeller] = {};
+    zp[k][curQuickSeller].zarplata = v; D.setZp(zp);
+  } else if (quickType === 'pul') {
+    var zp2 = D.zp(); if (!zp2[k]) zp2[k] = {}; if (!zp2[k][curQuickSeller]) zp2[k][curQuickSeller] = {};
+    zp2[k][curQuickSeller].pulkira = v; D.setZp(zp2);
+  } else if (quickType === 'exp') {
+    var exp = D.exp(); if (!exp[k]) exp[k] = {};
+    exp[k].prochie = (exp[k].prochie||0) + v; D.setExp(exp);
+  }
+  var tnames = {nal:'Нақд пул',kl:'Клик',zp:'Маош',pul:'Юлқира',exp:'Харажатлар'};
+  var sel = SELLERS.find(function(s){return s.id===curQuickSeller;}) || {name:curQuickSeller};
+  var hist = [];
+  try { hist = JSON.parse(localStorage.getItem('qhist')||'[]'); } catch(e){}
+  hist.unshift({v:v, type:quickType, tn:tnames[quickType], seller:sel.name, date:dFull(selQuickDate)});
+  localStorage.setItem('qhist', JSON.stringify(hist.slice(0,20)));
+  document.getElementById('qAmt').value = '';
+  qUpdate();
+  setSt('qSt', 'Сақланди: ' + fmt(v), 'ok');
+  setTimeout(function(){setSt('qSt','');}, 2500);
+  renderQHist();
+  toast('Сақланди: ' + fmt(v), 'ok');
+  var url = localStorage.getItem('sheetUrl')||'';
+  if (url) syncSheets(true);
+}
+
+function renderQHist() {
+  var hist = [];
+  try { hist = JSON.parse(localStorage.getItem('qhist')||'[]'); } catch(e){}
+  var el = document.getElementById('qHist');
+  if (!el) return;
+  if (!hist.length) { el.innerHTML = '<div style="color:var(--mt);font-size:12px;text-align:center;padding:8px">Ёзувлар йўқ</div>'; return; }
+  el.innerHTML = hist.slice(0,8).map(function(h) {
+    return '<div class="qhi"><div><div class="qhiv">' + fmt(h.v) + '</div>' +
+      '<div class="qhim">' + (h.tn||h.type) + ' - ' + h.seller + ' - ' + h.date + '</div></div></div>';
+  }).join('');
+}
+
+// === CALCULATOR ===
+function openCalcFab() {
+  var active = document.activeElement;
+  var tid = (active && active.classList && active.classList.contains('finput')) ? active.id : 'f-nal';
+  openCalc(tid);
+}
+function openCalc(targetId) {
+  calcTarget = targetId;
+  var el = document.getElementById(targetId);
+  calcVal = (el && el.value) ? el.value : '0';
+  calcExpr = ''; calcNew = true;
+  document.getElementById('cDisp').textContent = fmt(Number(calcVal));
+  document.getElementById('cExpr').textContent = '';
+  document.getElementById('calcModal').classList.add('show');
+}
+function closeCalc() { document.getElementById('calcModal').classList.remove('show'); }
+function cb(btn) {
+  var disp = document.getElementById('cDisp'), expr = document.getElementById('cExpr');
+  if (btn === 'C') { calcVal='0'; calcExpr=''; calcNew=true; disp.textContent='0'; expr.textContent=''; return; }
+  if (btn === '+/-') { calcVal = String(-parseFloat(calcVal)||0); disp.textContent=fmt(Number(calcVal)); return; }
+  if (btn === '%') { calcVal = String(parseFloat(calcVal)/100); disp.textContent=fmt(Number(calcVal)); return; }
+  if (['+','-','*','/'].indexOf(btn) >= 0) {
+    calcExpr = calcVal+btn; calcNew = true;
+    expr.textContent = fmt(Number(calcVal)) + (btn==='*'?'x':btn==='/'?'/':btn); return;
+  }
+  if (btn === '.') {
+    if (calcNew) { calcVal='0.'; calcNew=false; } else if (calcVal.indexOf('.') < 0) calcVal+='.';
+    disp.textContent = calcVal; return;
+  }
+  if (btn === '=') {
+    if (calcExpr) {
+      try {
+        var result = Function('"use strict";return (' + calcExpr + calcVal + ')')();
+        calcVal = String(Math.round(result));
+        calcExpr = ''; calcNew = true;
+        disp.textContent = fmt(Number(calcVal)); expr.textContent = '';
+      } catch(e){}
+    }
+    return;
+  }
+  if (calcNew) { calcVal = btn; calcNew = false; }
+  else { calcVal = calcVal === '0' ? btn : calcVal + btn; }
+  disp.textContent = fmt(Number(calcVal));
+}
+function calcUse() {
+  if (calcTarget) {
+    if (calcExpr) { try { var r = Function('"use strict";return (' + calcExpr + calcVal + ')')(); calcVal = String(Math.round(r)); } catch(e){} }
+    var el = document.getElementById(calcTarget);
+    if (el) { el.value = calcVal; el.dispatchEvent(new Event('input')); }
+  }
+  closeCalc();
+}
+document.getElementById('calcModal').addEventListener('click', function(e) { if (e.target === this) closeCalc(); });
+
+// === TELEGRAM ===
+function getTg() { return {tok:localStorage.getItem('tgToken')||'', chat:localStorage.getItem('tgChat')||''}; }
+function tgSend(text, stId) {
+  var creds = getTg();
+  if (!creds.tok || !creds.chat) { window.open('https://t.me/share/url?url=&text=' + encodeURIComponent(text), '_blank'); setSt(stId, 'Telegram очиляпти...', ''); return; }
+  setSt(stId, 'Юборилмоқда...', 'ld');
+  fetch('https://api.telegram.org/bot' + creds.tok + '/sendMessage', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({chat_id:creds.chat, text:text, parse_mode:'HTML'})
+  }).then(function(r){return r.json();}).then(function(j) {
+    if (j.ok) setSt(stId, 'Юборилди!', 'ok'); else setSt(stId, 'Хато: ' + j.description, 'err');
+  }).catch(function(e){setSt(stId, 'Хато: '+e.message, 'err');});
+}
+function testBot() {
+  var creds = getTg();
+  if (!creds.tok || !creds.chat) { setSt('botSt', 'TOKEN ва Chat ID киритинг', 'err'); return; }
+  setSt('botSt', 'Синаш...', 'ld');
+  fetch('https://api.telegram.org/bot' + creds.tok + '/sendMessage', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({chat_id:creds.chat, text:'Bot улланганyuchen!'})
+  }).then(function(r){return r.json();}).then(function(j){
+    if (j.ok) setSt('botSt', 'Ишлаяпти!', 'ok'); else setSt('botSt', 'Хато: '+j.description, 'err');
+  }).catch(function(e){setSt('botSt', 'Хато: '+e.message, 'err');});
+}
+function sendDayTg() {
+  if (!selDayDate) return;
+  var data = getDayData(selDayDate);
+  var s = data.sellers.find(function(x){return x.id===curDaySeller;}) || data.sellers[0];
+  var n = function(v){return v?Number(v).toLocaleString('ru-RU'):'0';};
+  var text = dFull(selDayDate) + ' ' + s.name + '\n' +
+    'Нақд пул: ' + n(s.nal) + '\nКлик: ' + n(s.ksum) + '\nКасса ойлик: ' + n(s.kassa) + '\n\n' +
+    'Маош: ' + n(s.zv) + '\nЮлқира: ' + n(s.pv) + '\n\n' +
+    'Ойлик ташқари харажат: ' + n(data.misc) + '\n\n' +
+    'Умумий касса: ' + n(s.kassa+data.misc) + '\nНахт қолди: ' + n(s.нахт);
+  tgSend(text, 'dayTgSt');
+}
+function sendWeekTg() {
+  var dates = getWeekDates(weekOffset);
+  var S = D.sales(), Z = D.zp(), K = D.klik(), E = D.exp();
+  var n = function(v){return v?Number(v).toLocaleString('ru-RU'):'0';};
+  var lines = ['ҲАФТАЛИК ҲИСОБОТ ' + dFull(dates[0]) + ' - ' + dFull(dates[6]), ''];
+  var totНақд=0,totKl=0,totZP=0,totPul=0,totMisc=0;
+  SELLERS.forEach(function(sl) {
+    var p=0,k=0,zv=0,pv=0;
+    dates.forEach(function(d){
+      p+=num(((S[dKey(d)]||{})[sl.id]||{}).nalichka);
+      var a=((K[dKey(d)]||{})[sl.id])||[]; a.forEach(function(x){k+=num(x);});
+      zv+=num(((Z[dKey(d)]||{})[sl.id]||{}).zarplata);
+      pv+=num(((Z[dKey(d)]||{})[sl.id]||{}).pulkira);
+    });
+    totНақд+=p;totKl+=k;totZP+=zv;totPul+=pv;
+    lines.push(sl.name+': Нақд '+n(p)+' | Клик '+n(k)+' | Касса '+n(p+k)+' | Нахт '+n(p-(zv+pv)));
+  });
+  EXP_FIELDS.forEach(function(f,fi){
+    var tot=dates.reduce(function(a,d){return a+num((E[dKey(d)]||{})[f]);},0);
+    if(tot>0){lines.push(EXP_LABELS[fi]+': '+n(tot));totMisc+=tot;}
+  });
+  lines.push('');
+  var kassa=totНақд+totKl;
+  lines.push('НАХТ ҚОЛДИ: '+n(totНақд-(totZP+totPul)));
+  lines.push('КАССА: '+n(kassa));
+  lines.push('УМУМИЙ КАССА: '+n(kassa+totMisc));
+  tgSend(lines.join('\n'), 'weekTgSt');
+}
+
+// === GOOGLE SHEETS ===
+function syncSheets(silent) {
+  var url = localStorage.getItem('sheetUrl')||'';
+  if (!url) { if (!silent) setSt('syncSt', 'Созламаларда URL киритинг', 'err'); return; }
+  if (!silent) setSt('syncSt', 'Синхрон...', 'ld');
+  setCloud('spin', 'синхрон...');
+  var dates = getWeekDates(weekOffset);
+  var payload = {
+    action:'syncAll', weekLabel:dFull(dates[6]),
+    dates:dates.map(function(d){return dKey(d);}),
+    dateLabels:dates.map(function(d){return d.getDate()+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear();}),
+    sellers:SELLERS.map(function(s){return {id:s.id,name:s.name};}),
+    sales:D.sales(), zp:D.zp(), klik:D.klik(), exp:D.exp()
+  };
+  fetch(url, {method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(payload), mode:'no-cors'})
+    .then(function() {
+      var now = new Date(), ts = now.getHours()+':'+pad(now.getMinutes());
+      localStorage.setItem('lastSync', ts);
+      setCloud('ok', ts);
+      if (!silent) { setSt('syncSt', 'Синхронланди!', 'ok'); toast('Google Жадвал obnovlena', 'ok'); }
+    })
+    .catch(function(e) { setCloud('err', 'хато'); if (!silent) setSt('syncSt', 'Хато: '+e.message, 'err'); });
+}
+function restoreFromSheets() {
+  var url = localStorage.getItem('sheetUrl')||'';
+  if (!url) { setSt('sheetSt', 'Vstavte URL', 'err'); return; }
+  setSt('sheetSt', 'Юкланмоқда...', 'ld');
+  fetch(url + '?action=getData')
+    .then(function(r){return r.json();})
+    .then(function(j){
+      if (j.ok && j.data) {
+        if (j.data.sales) D.setSales(j.data.sales);
+        if (j.data.zp) D.setZp(j.data.zp);
+        if (j.data.klik) D.setКлик(j.data.klik);
+        if (j.data.exp) D.setExp(j.data.exp);
+        setSt('sheetSt', 'Тикланди!', 'ok');
+        toast('Маълумотлар vosstanovleny', 'ok');
+        if (curPage===2) renderWeek();
+      } else setSt('sheetSt', 'Маълумот йўқ', 'err');
+    })
+    .catch(function(e){setSt('sheetSt', 'Хато: '+e.message, 'err');});
+}
+function setCloud(state, text) {
+  var dot = document.getElementById('cdot'), info = document.getElementById('cinfo');
+  dot.className = 'cdot' + (state?' '+state:'');
+  info.textContent = text;
+}
+function showSyncInfo() {
+  var last = localStorage.getItem('lastSync')||'ҳеч қачон';
+  toast('Охирги синхрон: ' + last);
+}
+
+// === AUTO SYNC ===
+function startAutoSync() {
+  stopAutoSync();
+  var url = localStorage.getItem('sheetUrl')||'';
+  if (!url) return;
+  syncInterval = setInterval(function(){syncSheets(true);}, 5*60*1000);
+}
+function stopAutoSync() { if (syncInterval) { clearInterval(syncInterval); syncInterval=null; } }
+function toggleAutoSync() {
+  var tg = document.getElementById('autoSyncTg');
+  var on = tg.classList.toggle('on');
+  localStorage.setItem('autoSync', on?'1':'0');
+  if (on) startAutoSync(); else stopAutoSync();
+}
+
+// === EXPORT ===
+function getTableData() {
+  var dates = getWeekDates(weekOffset);
+  var S = D.sales(), Z = D.zp(), K = D.klik(), E = D.exp();
+  var rows = [];
+  rows.push(['Сотувчи'].concat(dates.map(function(d){return dShort(d);})).concat(['ЖАМИ']));
+  SELLERS.forEach(function(sl) {
+    var pv = dates.map(function(d){return num(((S[dKey(d)]||{})[sl.id]||{}).nalichka);});
+    rows.push([sl.name+' Нақд'].concat(pv).concat([pv.reduce(function(a,b){return a+b;},0)]));
+    var kv = dates.map(function(d){var a=((K[dKey(d)]||{})[sl.id])||[];return a.reduce(function(x,y){return x+num(y);},0);});
+    rows.push([sl.name+' Клик'].concat(kv).concat([kv.reduce(function(a,b){return a+b;},0)]));
+  });
+  var kassaDay = dates.map(function(d){var v=0;SELLERS.forEach(function(sl){v+=num(((S[dKey(d)]||{})[sl.id]||{}).nalichka);var a=((K[dKey(d)]||{})[sl.id])||[];a.forEach(function(x){v+=num(x);});});return v;});
+  rows.push(['КАССА'].concat(kassaDay).concat([kassaDay.reduce(function(a,b){return a+b;},0)]));
+  rows.push([]);
+  SELLERS.forEach(function(sl){
+    var zv=dates.map(function(d){return num(((Z[dKey(d)]||{})[sl.id]||{}).zarplata);});
+    rows.push([sl.name+' Маош'].concat(zv).concat([zv.reduce(function(a,b){return a+b;},0)]));
+    var pv=dates.map(function(d){return num(((Z[dKey(d)]||{})[sl.id]||{}).pulkira);});
+    rows.push([sl.name+' Юл'].concat(pv).concat([pv.reduce(function(a,b){return a+b;},0)]));
+  });
+  rows.push([]);
+  EXP_FIELDS.forEach(function(f,fi){
+    var vals=dates.map(function(d){return num((E[dKey(d)]||{})[f]);});
+    if(vals.some(function(v){return v>0;})) rows.push([EXP_LABELS[fi]].concat(vals).concat([vals.reduce(function(a,b){return a+b;},0)]));
+  });
+  rows.push([]);
+  var t = getWeekTotals(weekOffset);
+  rows.push(['НАХТ ҚОЛДИ','','','','','','','',t.нахт]);
+  rows.push(['КАССА ЖАМИ','','','','','','','',t.kassa]);
+  rows.push(['УМУМИЙ КАССА','','','','','','','',t.obsh]);
+  return rows;
+}
+
+function exportCSV() {
+  setSt('exportSt','CSV...','ld');
+  try {
+    var rows = getTableData();
+    var dates = getWeekDates(weekOffset);
+    var csv = rows.map(function(r){
+      return r.map(function(c){
+        return typeof c==='number'?c:('"'+(c||'').toString().replace(/"/g,'""')+'"');
+      }).join(',');
+    }).join('\n');
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href=url; a.download='otchet_'+dFull(dates[0])+'.csv'; a.click();
+    URL.revokeObjectURL(url);
+    setSt('exportSt','CSV юкланди!','ok'); toast('CSV юкланди','ok');
+  } catch(e){setSt('exportSt','Хато: '+e.message,'err');}
+}
+
+function exportExcel() {
+  setSt('exportSt','Excel...','ld');
+  try {
+    var rows = getTableData();
+    var dates = getWeekDates(weekOffset);
+    var table = '<table border="1">';
+    rows.forEach(function(r){
+      table += '<tr>';
+      r.forEach(function(c){
+        var isNum = typeof c==='number';
+        table += '<td'+(isNum?' style="text-align:right"':'')+'>'+((c===undefined||c===null)?'':c)+'</td>';
+      });
+      table += '</tr>';
+    });
+    table += '</table>';
+    var html2 = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">' +
+      '<head><meta charset="utf-8"><style>td{font-family:Arial;font-size:11pt}</style></head>' +
+      '<body>' + table + '</body></html>';
+    var blob = new Blob([html2], {type:'application/vnd.ms-excel;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href=url; a.download='otchet_'+dFull(dates[0])+'.xls'; a.click();
+    URL.revokeObjectURL(url);
+    setSt('exportSt','Excel юкланди!','ok'); toast('Excel юкланди','ok');
+  } catch(e){setSt('exportSt','Хато: '+e.message,'err');}
+}
+
+// === SETTINGS ===
+function encSet(t,c,u){return btoa(unescape(encodeURIComponent(JSON.stringify({t:t,c:c,u:u}))));}
+function decSet(h){try{return JSON.parse(decodeURIComponent(escape(atob(h))));}catch(e){return null;}}
+function initFromHash(){
+  var h = location.hash.slice(1); if (!h) return;
+  var s = decSet(h); if (!s) return;
+  if (s.t && !localStorage.getItem('tgToken')) localStorage.setItem('tgToken', s.t);
+  if (s.c && !localStorage.getItem('tgChat')) localStorage.setItem('tgChat', s.c);
+  if (s.u && !localStorage.getItem('sheetUrl')) localStorage.setItem('sheetUrl', s.u);
+}
+function saveSets(){
+  var tok=document.getElementById('sTok').value.trim();
+  var chat=document.getElementById('sChat').value.trim();
+  var url=document.getElementById('sUrl').value.trim();
+  localStorage.setItem('tgToken',tok); localStorage.setItem('tgChat',chat); localStorage.setItem('sheetUrl',url);
+  setCloud(url?'ok':'','');
+  if (url && localStorage.getItem('autoSync')!=='0') startAutoSync();
+}
+function loadSets(){
+  initFromHash();
+  var t=document.getElementById('sTok'), c=document.getElementById('sChat'), u=document.getElementById('sUrl');
+  if(t) t.value=localStorage.getItem('tgToken')||'';
+  if(c) c.value=localStorage.getItem('tgChat')||'';
+  if(u) u.value=localStorage.getItem('sheetUrl')||'';
+  var as=localStorage.getItem('autoSync')!=='0';
+  var atg=document.getElementById('autoSyncTg'); if(atg) atg.classList.toggle('on',as);
+  var dark=document.documentElement.getAttribute('data-theme')==='dark';
+  var ttg=document.getElementById('themeTg'); if(ttg) ttg.classList.toggle('on',dark);
+}
+function showSettings(){ loadSets(); renderSelMgmt(); document.getElementById('setModal').style.display='block'; }
+function closeSettings(){ document.getElementById('setModal').style.display='none'; }
+function saveBm(){
+  var t=document.getElementById('sTok').value.trim(), c=document.getElementById('sChat').value.trim(), u=document.getElementById('sUrl').value.trim();
+  if(!t&&!c&&!u){setSt('bmSt','Созламаларни киритинг!','err');return;}
+  var enc=encSet(t,c,u);
+  var full=location.origin+location.pathname+'#'+enc;
+  document.getElementById('bmLink').textContent=full;
+  document.getElementById('bmWrap').style.display='block';
+  setSt('bmSt','Ҳавола тайёр!','ok');
+}
+function copyBm(){
+  var link=document.getElementById('bmLink').textContent;
+  if(navigator.clipboard) navigator.clipboard.writeText(link).then(function(){toast('Нусхаланди!','ok');});
+  else{var el=document.createElement('textarea');el.value=link;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);toast('Нусхаланди!','ok');}
+}
+function clearAll(){
+  if(!confirm('Барча маълумотларни ўчириш?')) return;
+  ['Ds','Dz','Dk','De'].forEach(function(k){localStorage.removeItem(k);});
+  toast('Маълумотлар udaleny','err'); closeSettings();
+  if(curPage===2) renderWeek();
+}
+
+// === SELLER MANAGEMENT ===
+function renderSelMgmt(){
+  var arr=getSellers(), el=document.getElementById('selMgmt');
+  if(!el) return;
+  el.innerHTML=arr.map(function(s,i){
+    return '<div class="selit">' +
+      '<div class="selclr" style="background:'+SELLER_COLORS[i%SELLER_COLORS.length]+'"></div>' +
+      '<input class="selnm" value="'+s.name+'" id="snm'+i+'" placeholder="Исм">' +
+      '<div style="display:flex;flex-direction:column;gap:2px">' +
+      '<div style="font-size:8px;color:var(--mt)">Юлқира</div>' +
+      '<input class="selpul" value="'+(s.fixedPul||0)+'" id="spl'+i+'" type="number" inputmode="numeric" placeholder="0">' +
+      '</div>' +
+      (arr.length>1?'<button class="seldel" onclick="delSeller('+i+')">x</button>':'<div style="width:30px"></div>') +
+      '</div>';
+  }).join('');
+}
+function addSeller(){
+  var arr=getSellers(), idx=arr.length;
+  arr.push({id:'sel'+Date.now(), name:'Сотувчи '+(idx+1), cls:SELLER_CLS[idx%SELLER_CLS.length], fixedPul:0});
+  saveSellersData(arr); renderSelMgmt();
+}
+function delSeller(i){
+  var arr=getSellers();
+  if(arr.length<=1){setSt('selSt','Камида 1 сотувчи керак','err');return;}
+  if(!confirm('Ўчириш '+arr[i].name+'?')) return;
+  arr.splice(i,1); saveSellersData(arr); renderSelMgmt(); setSt('selSt','Ўчирилди','ok');
+}
+function saveSellers(){
+  var arr=getSellers();
+  arr.forEach(function(s,i){
+    var n=document.getElementById('snm'+i), p=document.getElementById('spl'+i);
+    if(n) s.name=n.value.trim()||s.name;
+    if(p) s.fixedPul=num(p.value);
+  });
+  saveSellersData(arr); setSt('selSt','Сақланди!','ok'); toast('Сотувчилар obnovleny','ok');
+}
+
+// === HELPERS ===
+function setSt(id,msg,cls){var el=document.getElementById(id);if(!el)return;el.textContent=msg;el.className='st'+(cls?' '+cls:'');}
+function toast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(type?' '+type:'');t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
+
+// === INIT ===
+loadTheme();
+initFromHash();
+rebuildAll();
+updateWChip();
+initInputPage();
+var ls2 = localStorage.getItem('lastSync');
+var su = localStorage.getItem('sheetUrl')||'';
+setCloud(su?(ls2?'ok':''):'off', su?(ls2?ls2:'улланган'):'офлайн');
+if(su && localStorage.getItem('autoSync')!=='0') startAutoSync();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function(){});
 (function(){
-  const PAGES = ['report','daily','sales','zp','expenses','klik','settings'];
-  let touchStartX = 0;
-  let touchStartY = 0;
-  let isSwiping = false;
-
-  function getCurrentPageIndex(){
-    for(let i=0;i<PAGES.length;i++){
-      const p = document.getElementById('page-'+PAGES[i]);
-      if(p && p.classList.contains('active')) return i;
-    }
-    return 0;
-  }
-
-  function updateDots(index){
-    const dots = document.querySelectorAll('.swipe-dot');
-    dots.forEach((d,i) => d.classList.toggle('active', i===index));
-  }
-
-  function goToPage(index){
-    if(index < 0 || index >= PAGES.length) return;
-    const navBtns = document.querySelectorAll('nav button');
-    const id = PAGES[index];
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    const page = document.getElementById('page-'+id);
-    if(page) page.classList.add('active');
-    if(navBtns[index]) navBtns[index].classList.add('active');
-    // trigger page init
-    if(id==='daily') buildDayPicker();
-    if(id==='sales') buildSalesDateSel();
-    if(id==='zp') buildZpDateSel();
-    if(id==='expenses') buildExpDateSel();
-    if(id==='klik') buildKlikDateSel();
-    if(id==='settings'){ loadTgSettings(); loadScriptUrl(); }
-    updateDots(index);
-  }
-
-  document.addEventListener('touchstart', e => {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-    isSwiping = false;
-  }, {passive: true});
-
-  document.addEventListener('touchmove', e => {
-    const dx = e.touches[0].clientX - touchStartX;
-    const dy = e.touches[0].clientY - touchStartY;
-    if(Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10){
-      isSwiping = true;
-    }
-  }, {passive: true});
-
-  document.addEventListener('touchend', e => {
-    if(!isSwiping) return;
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    // Только горизонтальный свайп (dx должен быть больше dy)
-    if(Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if(Math.abs(dx) < 50) return; // минимальная длина свайпа
-    const cur = getCurrentPageIndex();
-    if(dx < 0){
-      // свайп влево → следующая страница
-      goToPage(cur + 1);
-    } else {
-      // свайп вправо → предыдущая страница
-      goToPage(cur - 1);
-    }
-    isSwiping = false;
-  }, {passive: true});
+  var h=location.hash.slice(1);
+  var pm={quick:4,day:1,week:2,month:3};
+  if(h in pm) setTimeout(function(){goPage(pm[h],null);},100);
 })();
-
-// ══ INIT ══
-function renderAll(){
-  updateWeekLabel();
-  renderReport();
-  loadScriptUrl();
-  loadTgSettings();
-  // Создать точки
-  const PAGES=['report','daily','sales','zp','expenses','klik','settings'];
-  const cont=document.getElementById('swipeDots');
-  if(cont){
-    cont.innerHTML=PAGES.map((_,i)=>`<div class="swipe-dot${i===0?' active':''}"></div>`).join('');
-  }
-}
-renderAll();
-if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 </script>
 </body>
 </html>
