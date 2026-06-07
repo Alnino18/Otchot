@@ -1822,11 +1822,32 @@ function restoreData(input) {
       if (data.klik) D.setKlik(data.klik);
       if (data.exp) D.setExp(data.exp);
       if (data.sellers) { localStorage.setItem('sellers', JSON.stringify(data.sellers)); rebuildAll(); }
+      if (data.settings) {
+        if (data.settings.tgToken)  localStorage.setItem('tgToken',  data.settings.tgToken);
+        if (data.settings.tgChat)   localStorage.setItem('tgChat',   data.settings.tgChat);
+        if (data.settings.sheetUrl) localStorage.setItem('sheetUrl', data.settings.sheetUrl);
+        loadSets();
+        var su = data.settings.sheetUrl;
+        if (su && localStorage.getItem('autoSync') !== '0') startAutoSync();
+        setCloud(su ? 'ok' : 'off', su ? (localStorage.getItem('lastSync') || 'ulangan') : 'oflayn');
+      }
       setSt('backupSt', 'Tiklandi! ✓', 'ok');
       toast('Ma\u02BBlumotlar tiklandi', 'ok');
-      if (curPage === 0) loadInputFields();
-      if (curPage === 2) renderWeek();
-      if (curPage === 3) renderMonth();
+      // Barcha sahifalarni to'liq qayta yuklash
+      selDate = null;
+      initInputPage();       // input page kunlarini yangilash
+      if (curPage === 0) {
+        // selDate ni birinchi kunga o'rnatish
+        var wd = getWeekDates(weekOffset);
+        selDate = wd[0];
+        loadInputFields();
+      } else if (curPage === 1) {
+        initDayPage();
+      } else if (curPage === 2) {
+        renderWeek();
+      } else if (curPage === 3) {
+        renderMonth();
+      }
     } catch(err) {
       setSt('backupSt', 'Xato: ' + err.message, 'err');
     }
