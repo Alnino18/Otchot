@@ -416,6 +416,9 @@ nav button.on{color:var(--gr)}
           <button class="expbtn" onclick="exportCSV()" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:var(--bl)">
             <span class="ei">&#128203;</span>CSV
           </button>
+          <button class="expbtn" onclick="sendToSheets()" id="sheetsBtnAdmin" style="background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.3);color:#eab308;grid-column:span 2">
+            <span class="ei">&#128202;</span>Google Sheets га юбориш
+          </button>
         </div>
         <div class="st" id="exportSt"></div>
       </div>
@@ -740,6 +743,7 @@ var MONTHS = ['Январь','Феврал','Март','Апрель','Май','
 
 // === STATE ===
 var weekOffset = 0;
+var SHEETS_URL = 'https://script.google.com/macros/s/AKfycby-cHgMXrwsW05TttfMBRqovoLlad9epQLeZpKfS1iqU3lBXnKqPUDoTbGZ-RoAGfPa/exec';
 var curPage = 0;
 var curSeller = null;
 var curDaySeller = null;
@@ -1661,6 +1665,56 @@ function getTableData() {
   rows.push(['КАССА ЖАМИ','','','','','','','',t.kassa]);
   rows.push(['УМУМИЙ КАССА','','','','','','','',t.obsh]);
   return rows;
+}
+
+function sendToSheets() {
+  if (!SHEETS_URL) {
+    toast('SHEETS_URL ни index.html га қўйинг!', 'err');
+    setSt('exportSt', 'SHEETS_URL белгиланмаган', 'err');
+    return;
+  }
+  setSt('exportSt', 'Google Sheets га юборилмоқда...', 'ld');
+  try {
+    var dates    = getWeekDates(weekOffset);
+    var dateKeys = dates.map(function(d) { return dKey(d); });
+    var dateLabels = dates.map(function(d) { return dShort(d); });
+    var d0 = dates[0], d6 = dates[6];
+    var weekLabel = dShort(d0) + '-' + dShort(d6) + '.' + d6.getFullYear().toString().slice(2);
+
+    var payload = {
+      action:     'syncAll',
+      weekLabel:  weekLabel,
+      dates:      dateKeys,
+      dateLabels: dateLabels,
+      sellers:    SELLERS,
+      sales:      D.sales(),
+      zp:         D.zp(),
+      klik:       D.klik(),
+      exp:        D.exp()
+    };
+
+    fetch(SHEETS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        setSt('exportSt', 'Google Sheets га юборилди! ✓', 'ok');
+        toast('Google Sheets га юборилди!', 'ok');
+      } else {
+        setSt('exportSt', 'Хато: ' + (data.error || 'nomalum'), 'err');
+        toast('Хато юборишда', 'err');
+      }
+    })
+    .catch(function(err) {
+      setSt('exportSt', 'Тармоқ хатоси: ' + err.message, 'err');
+      toast('Тармоқ хатоси', 'err');
+    });
+  } catch(e) {
+    setSt('exportSt', 'Хато: ' + e.message, 'err');
+  }
 }
 
 function exportCSV() {
