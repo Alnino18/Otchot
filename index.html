@@ -614,6 +614,8 @@ async function loadUserRole(uid) {
 }
 
 // ── AUTH STATE LISTENER ──
+var _appInitialized = false; // Ilova faqat bir marta init bo'lishi uchun flag
+
 onAuthStateChanged(auth, async function(user) {
   window.FB.user = user;
   if (user) {
@@ -628,10 +630,18 @@ onAuthStateChanged(auth, async function(user) {
     // Role ga qarab UI ni sozlash
     applyRoleUI(window.FB.role);
 
-    startFirestoreSync();
-    if (window.onFbReady) window.onFbReady();
+    // Firestore sync faqat birinchi marta ishga tushadi
+    if (!_appInitialized) {
+      _appInitialized = true;
+      startFirestoreSync();
+      if (window.onFbReady) window.onFbReady();
+    } else {
+      // Qayta kirish holatida faqat UI rolini yangilaymiz, sync davom etadi
+      applyRoleUI(window.FB.role);
+    }
   } else {
     window.FB.role = null;
+    _appInitialized = false; // Logout bo'lganda flag reset
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
     if (window.FB.unsub) { window.FB.unsub(); window.FB.unsub = null; }
@@ -674,15 +684,18 @@ function startFirestoreSync() {
       window.FBDATA.exp     = d.exp     || {};
       window.FBDATA.sellers = d.sellers || [];
     } else {
-      // Birinchi marta - boshlang'ich hujjat yaratish
-      setDoc(window.FB.docRef, {
-        sales: {}, zp: {}, klik: {}, exp: {},
-        sellers: [
-          {id:'tanya', name:'Tanya', cls:'t', fixedPul:50000},
-          {id:'sveta', name:'Sveta', cls:'s', fixedPul:50000},
-          {id:'dilnoza', name:'Dilnoza', cls:'d', fixedPul:0}
-        ]
-      });
+      // Birinchi marta - boshlang'ich hujjat yaratish (faqat admin, bir marta)
+      if (window.FB.role === 'admin' && !window.FB.docCreated) {
+        window.FB.docCreated = true;
+        setDoc(window.FB.docRef, {
+          sales: {}, zp: {}, klik: {}, exp: {},
+          sellers: [
+            {id:'tanya', name:'Tanya', cls:'t', fixedPul:50000},
+            {id:'sveta', name:'Sveta', cls:'s', fixedPul:50000},
+            {id:'dilnoza', name:'Dilnoza', cls:'d', fixedPul:0}
+          ]
+        });
+      }
     }
     window.FB.ready = true;
     if (window.onFbDataChange) window.onFbDataChange();
