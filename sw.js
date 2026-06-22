@@ -1,30 +1,41 @@
-const CACHE_NAME = 'otchet-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
-];
+const CACHE = 'hisobot-fb-v1';
+const ASSETS = ['./index.html', './manifest.json'];
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
-  );
+self.addEventListener('install', function(e) {
   self.skipWaiting();
-});
-
-self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    caches.open(CACHE).then(function(cache) { return cache.addAll(ASSETS); })
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', e => {
+self.addEventListener('activate', function(e) {
+  e.waitUntil(
+    caches.keys().then(function(keys) {
+      return Promise.all(
+        keys.filter(function(k) { return k !== CACHE; })
+            .map(function(k) { return caches.delete(k); })
+      );
+    }).then(function() { return self.clients.claim(); })
+  );
+});
+
+// Network-first strategiya: Firebase real-time ma'lumotlar uchun
+// HTML/JS doim networkdan, faqat offline holatda cache fallback
+self.addEventListener('fetch', function(e) {
+  if (e.request.method !== 'GET') return;
+  // Firebase so'rovlarini cache qilmaymiz
+  if (e.request.url.indexOf('firestore.googleapis.com') > -1 ||
+      e.request.url.indexOf('googleapis.com') > -1 ||
+      e.request.url.indexOf('gstatic.com') > -1) {
+    return; // browser default fetch
+  }
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request).catch(() => caches.match('./index.html')))
+    fetch(e.request).then(function(res) {
+      var resClone = res.clone();
+      caches.open(CACHE).then(function(cache) { cache.put(e.request, resClone); });
+      return res;
+    }).catch(function() {
+      return caches.match(e.request);
+    })
   );
 });

@@ -233,9 +233,53 @@ nav button.on{color:var(--gr)}
 .tbox.ind-bad{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3)}
 .tbox.ind-ok .tv{color:var(--gr)}
 .tbox.ind-bad .tv{color:var(--rd)}
+
+/* === LOGIN SCREEN === */
+#loginScreen{display:none;position:fixed;inset:0;background:var(--bg);z-index:500;
+  flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.login-box{width:100%;max-width:340px}
+.login-logo{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:3px;
+  color:var(--gr);text-align:center;margin-bottom:6px}
+.login-sub{font-size:11px;color:var(--mt);text-align:center;margin-bottom:28px}
+.login-field{margin-bottom:14px}
+.login-lbl{font-size:10px;font-weight:700;color:var(--mt);letter-spacing:.5px;margin-bottom:6px;display:block}
+.login-input{width:100%;padding:13px 14px;border-radius:11px;border:1px solid var(--bd);
+  background:var(--sf2);color:var(--tx);font-family:'Manrope',sans-serif;font-size:15px;outline:none}
+.login-input:focus{border-color:var(--gr)}
+.login-btn{width:100%;padding:15px;border-radius:12px;border:none;font-family:'Bebas Neue',sans-serif;
+  font-size:18px;letter-spacing:2px;cursor:pointer;margin-top:10px;background:var(--gr);color:#000}
+.login-btn:active{opacity:.8}
+.login-btn:disabled{opacity:.5;cursor:not-allowed}
+.login-err{font-size:12px;color:var(--rd);text-align:center;margin-top:12px;min-height:16px}
+.login-spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,.3);
+  border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite;margin-right:6px;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#app{display:none}
+.userbar{display:flex;align-items:center;gap:6px}
+.userbar span{font-size:10px;color:var(--mt);font-weight:600}
+.logout-btn{background:none;border:none;color:var(--rd);font-size:11px;font-weight:700;cursor:pointer;padding:4px 6px}
 </style>
 </head>
 <body>
+
+<!-- ЛОГИН ЭКРАНИ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">ҲИСОБОТ</div>
+    <div class="login-sub">Хизматчи ҳисоботи тизими</div>
+    <div class="login-field">
+      <label class="login-lbl">ТЕЛЕФОН РАҚАМ</label>
+      <input class="login-input" id="loginPhone" type="tel" placeholder="+998 90 123 45 67" autocomplete="tel">
+    </div>
+    <div class="login-field">
+      <label class="login-lbl">ПАРОЛ</label>
+      <input class="login-input" id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">КИРИШ</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
 <div id="app">
   <header>
     <div class="logo">ҲИСОБОТ</div>
@@ -250,7 +294,8 @@ nav button.on{color:var(--gr)}
         <span class="cinfo" id="cinfo">офлайн</span>
       </div>
       <button class="ibtn" onclick="toggleTheme()" id="themeBtn">&#127769;</button>
-      <button class="ibtn" onclick="showSettings()">&#9881;</button>
+      <button class="ibtn" id="settingsBtn" onclick="showSettings()">&#9881;</button>
+      <span id="userInfo" style="font-size:10px;color:var(--mt);font-weight:600;margin-right:2px"></span><button class="logout-btn" onclick="fbLogout()" title="Чиқиш">&#9099;</button>
     </div>
   </header>
   <main id="mainScroll">
@@ -362,11 +407,7 @@ nav button.on{color:var(--gr)}
         <button class="btn btn-bl" onclick="sendWeekTg()">Ҳафтани Telegramга</button>
         <div class="st" id="weekTgSt"></div>
       </div>
-      <div class="card" style="border-color:rgba(52,168,83,.3)">
-        <button class="btn btn-sy" onclick="syncSheets()">Синхронлаштириш</button>
-        <div class="st" id="syncSt"></div>
-      </div>
-      <div class="card">
+      <div class="card" id="exportCard">
         <div class="ctitle">Экспорт</div>
         <div class="expgrid">
           <button class="expbtn" onclick="exportExcel()" style="background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--gr)">
@@ -455,7 +496,6 @@ nav button.on{color:var(--gr)}
     <div class="card">
       <div class="ctitle">Интерфейс</div>
       <div class="tgrow"><span class="tglbl">Тўқ мавзу</span><div class="tg on" id="themeTg" onclick="toggleTheme()"></div></div>
-      <div class="tgrow"><span class="tglbl">Ҳар 5 дақиқада авто-синхрон</span><div class="tg on" id="autoSyncTg" onclick="toggleAutoSync()"></div></div>
     </div>
     <div class="card">
       <div class="ctitle">Telegram Бот</div>
@@ -464,16 +504,6 @@ nav button.on{color:var(--gr)}
       <button class="btn btn-bl" onclick="testBot()" style="font-size:13px;padding:10px;margin-top:4px">Ботни синаш</button>
       <div class="st" id="botSt"></div>
       <div class="hbox">TOKEN: @BotFather → /newbot<br>Chat ID: @userinfobot → /start</div>
-    </div>
-    <div class="card">
-      <div class="ctitle">Google Жадвал</div>
-      <div class="srow"><div class="slbl2">WEB APP URL</div><input class="sinput" id="sUrl" placeholder="https://script.google.com/..." oninput="saveSets()"></div>
-      <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
-        <button class="btn btn-sy" onclick="syncSheets()" style="flex:1;font-size:12px;padding:10px;margin-top:0">Синхрон</button>
-        <button class="btn btn-bl" onclick="restoreFromSheets()" style="flex:1;font-size:12px;padding:10px;margin-top:0">Тиклаш</button>
-      </div>
-      <div class="st" id="sheetSt"></div>
-      <div class="hbox">1. Жадвал → Кенгайтмалар → Apps Script<br>2. google-apps-script.gs кодини киритинг<br>3. Жойлаштириш → Веб-илова → Ҳамма</div>
     </div>
     <div class="card" style="border-color:rgba(34,197,94,.3)">
       <div class="ctitle">Созламали хатчўп</div>
@@ -491,28 +521,207 @@ nav button.on{color:var(--gr)}
       <button class="btn btn-gr" onclick="addSeller()" style="font-size:13px;padding:10px;margin-top:6px">+ Қўшиш</button>
       <button class="btn btn-bl" onclick="saveSellers()" style="font-size:13px;padding:10px;margin-top:6px">Сотувчиларни сақлаш</button>
       <div class="st" id="selSt"></div>
+      <div class="hbox">Янги ходим учун логин (телефон+парол) яратиш — Firebase Console → Authentication → Add user. Email майдонига: <b>998901234567@otchot.local</b> форматида киритинг.</div>
     </div>
     <div class="card">
       <div class="ctitle">Маълумотлар</div>
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <button class="btn" onclick="backupData()" style="flex:1;font-size:12px;padding:10px;margin-top:0;background:rgba(59,130,246,.15);color:var(--bl);border:1px solid rgba(59,130,246,.3)">&#128190; Backup</button>
-        <button class="btn" onclick="document.getElementById('restoreFile').click()" style="flex:1;font-size:12px;padding:10px;margin-top:0;background:rgba(245,158,11,.15);color:var(--am);border:1px solid rgba(245,158,11,.3)">&#128268; Restore</button>
+      <div style="font-size:10px;color:var(--mt);margin-bottom:8px;line-height:1.6">
+        Барча маълумотлар <b style="color:var(--tx)">Firebase Cloud</b> да реал вақтда сақланади.
+        Барча қурилмаларда автоматик синхронланади.
       </div>
-      <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="restoreData(this)">
+      <button class="btn" onclick="backupData()" style="width:100%;font-size:12px;padding:10px;margin-top:0;background:rgba(59,130,246,.15);color:var(--bl);border:1px solid rgba(59,130,246,.3)">&#128190; JSON юклаб олиш (захира)</button>
       <div class="st" id="backupSt"></div>
-      <button class="btn btn-rd" onclick="clearAll()" style="font-size:13px;padding:11px;margin-top:6px">Барча маълумотларни ўчириш</button>
+    </div>
+    <div class="card" style="border-color:rgba(245,158,11,.3)">
+      <div class="ctitle">&#128228; Эски маълумотларни кўчириш</div>
+      <div style="font-size:10px;color:var(--mt);margin-bottom:10px;line-height:1.6">
+        Эски иловадан олинган <b style="color:var(--am)">JSON backup</b> файлини Firestore'га юклаш учун ишлатинг. Бир маротаба бажарилади.
+      </div>
+      <button class="btn" onclick="document.getElementById('migFile').click()" style="width:100%;font-size:12px;padding:10px;margin-top:0;background:rgba(245,158,11,.15);color:var(--am);border:1px solid rgba(245,158,11,.3)">&#128228; JSON файлдан Firebase га импорт</button>
+      <input type="file" id="migFile" accept=".json" style="display:none" onchange="importFromJson(this)">
+      <div class="st" id="migSt"></div>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
+<script type="module">
+// ════════════════════════════════════════════════════════════
+// FIREBASE — Auth + Firestore data layer
+// ════════════════════════════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, onSnapshot, collection, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDD3JIOdSbfFTz-itcSAsXzLgitp1TjnJ8",
+  authDomain: "otchot-3e28b.firebaseapp.com",
+  projectId: "otchot-3e28b",
+  storageBucket: "otchot-3e28b.firebasestorage.app",
+  messagingSenderId: "775609974209",
+  appId: "1:775609974209:web:f659aab23a885443df0340"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const auth  = getAuth(fbApp);
+const db    = getFirestore(fbApp);
+
+// Telefon raqamni Firebase Auth uchun pseudo-email ga aylantirish
+// (Firebase Auth telefon+parol ni to'g'ridan-to'g'ri qo'llab-quvvatlamaydi SMS'siz,
+//  shuning uchun telefon raqamni ichki email formatga o'giramiz: 998901234567@otchot.local)
+function phoneToEmail(phone) {
+  var clean = String(phone).replace(/[^0-9]/g, '');
+  return clean + '@otchot.local';
+}
+
+// ── Global state ──
+window.FB = {
+  app: fbApp, auth: auth, db: db,
+  user: null,
+  ready: false,
+  docRef: doc(db, 'company', 'main'), // yagona umumiy hujjat - barcha xodimlar shu yerga yozadi
+  unsub: null
+};
+
+// ── LOGIN ──
+window.fbLogin = function(phone, password, onErr) {
+  var email = phoneToEmail(phone);
+  signInWithEmailAndPassword(auth, email, password)
+    .catch(function(err) {
+      var msg = 'Хатолик: телефон ёки парол нотўғри';
+      if (err.code === 'auth/too-many-requests') msg = 'Жуда кўп уриниш. Кейинроқ қайтадан уриниб кўринг';
+      if (err.code === 'auth/user-disabled') msg = 'Бу ҳисоб блокланган';
+      if (onErr) onErr(msg);
+    });
+};
+
+window.fbLogout = function() {
+  signOut(auth);
+};
+
+// ── ROLE ──
+// Firestore: users/{uid} → {role: 'admin' | 'seller', name: 'Tanya'}
+async function loadUserRole(uid) {
+  try {
+    const snap = await getDoc(doc(db, 'users', uid));
+    return snap.exists() ? snap.data() : {role: 'seller'};
+  } catch(e) { return {role: 'seller'}; }
+}
+
+// ── AUTH STATE LISTENER ──
+onAuthStateChanged(auth, async function(user) {
+  window.FB.user = user;
+  if (user) {
+    // Roleni yuklash
+    const userData = await loadUserRole(user.uid);
+    window.FB.role = userData.role || 'seller';
+    window.FB.userName = userData.name || user.email.split('@')[0];
+
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+
+    // Role ga qarab UI ni sozlash
+    applyRoleUI(window.FB.role);
+
+    startFirestoreSync();
+    if (window.onFbReady) window.onFbReady();
+  } else {
+    window.FB.role = null;
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    if (window.FB.unsub) { window.FB.unsub(); window.FB.unsub = null; }
+  }
+});
+
+// Role asosida UI elementlarini ko'rsatish/yashirish
+function applyRoleUI(role) {
+  var isAdmin = role === 'admin';
+  // Sozlamalar tugmasi - faqat admin ko'radi
+  var setBtn = document.getElementById('settingsBtn');
+  if (setBtn) setBtn.style.display = isAdmin ? '' : 'none';
+  // Eksport tugmasi - faqat admin
+  var expCard = document.getElementById('exportCard');
+  if (expCard) expCard.style.display = isAdmin ? '' : 'none';
+  // User info ko'rsatish
+  var userInfo = document.getElementById('userInfo');
+  if (userInfo) {
+    userInfo.textContent = window.FB.userName + (isAdmin ? ' (admin)' : '');
+  }
+}
+
+// Admin tekshirish (main script uchun)
+window.isAdmin = function() { return window.FB.role === 'admin'; };
+
+// ── FIRESTORE: real-time sinxronlash ──
+// Local cache - tezkor o'qish uchun
+window.FBDATA = {
+  sales: {}, zp: {}, klik: {}, exp: {}, sellers: []
+};
+
+function startFirestoreSync() {
+  if (window.FB.unsub) window.FB.unsub();
+  window.FB.unsub = onSnapshot(window.FB.docRef, function(snap) {
+    if (snap.exists()) {
+      var d = snap.data();
+      window.FBDATA.sales   = d.sales   || {};
+      window.FBDATA.zp      = d.zp      || {};
+      window.FBDATA.klik    = d.klik    || {};
+      window.FBDATA.exp     = d.exp     || {};
+      window.FBDATA.sellers = d.sellers || [];
+    } else {
+      // Birinchi marta - boshlang'ich hujjat yaratish
+      setDoc(window.FB.docRef, {
+        sales: {}, zp: {}, klik: {}, exp: {},
+        sellers: [
+          {id:'tanya', name:'Tanya', cls:'t', fixedPul:50000},
+          {id:'sveta', name:'Sveta', cls:'s', fixedPul:50000},
+          {id:'dilnoza', name:'Dilnoza', cls:'d', fixedPul:0}
+        ]
+      });
+    }
+    window.FB.ready = true;
+    if (window.onFbDataChange) window.onFbDataChange();
+  }, function(err) {
+    console.error('Firestore sync xato:', err);
+    if (window.toast) window.toast('Synс хатоси: ' + err.message, 'err');
+  });
+}
+
+// ── FIRESTORE: yozish (debounced) ──
+var fbWriteTimer = null;
+window.fbSaveField = function(field, value) {
+  window.FBDATA[field] = value;
+  clearTimeout(fbWriteTimer);
+  fbWriteTimer = setTimeout(function() {
+    var patch = {};
+    patch[field] = value;
+    setDoc(window.FB.docRef, patch, {merge: true}).catch(function(err) {
+      console.error('Firestore yozish xato:', err);
+      if (window.toast) window.toast('Сақлашда хато: ' + err.message, 'err');
+    });
+  }, 350);
+};
+
+window.fbSaveFieldImmediate = function(field, value) {
+  window.FBDATA[field] = value;
+  var patch = {};
+  patch[field] = value;
+  return setDoc(window.FB.docRef, patch, {merge: true});
+};
+
+</script>
+
 <script>
 // === CONSTANTS ===
 var SELLER_COLORS = ['#a855f7','#14b8a6','#f59e0b','#3b82f6','#ef4444','#22c55e'];
 var SELLER_CLS = ['t','s','d','b','r','g'];
 var EXP_FIELDS = ['zel','pak','obed','gel','ubork','sul','prochie'];
-var EXP_LABELS = ['Кўк/Туз/Соя','Пакет/Салфетка','Тушлик/Қаҳва/Нон','Gel/Azelit','Uborka/Lamp','Сув/Мусиқа','Бошқалар'];
+var EXP_LABELS = ['Кўк/Туз/Соя','Пакет/Салфетка','Тушлик/Қаҳва/Нон','Гель/Азелит','Тозалаш/Чироқ','Сув/Мусиқа','Бошқалар'];
 var PAGES = ['input','day','week','month'];
 var MONTHS = ['Январь','Феврал','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 
@@ -531,33 +740,30 @@ var calcExpr = '';
 var calcVal = '0';
 var calcNew = true;
 
-// === STORAGE ===
-function ls(k, v) {
-  if (v === undefined) { try { return JSON.parse(localStorage.getItem(k) || '{}'); } catch(e) { return {}; } }
-  localStorage.setItem(k, JSON.stringify(v));
-}
+// === STORAGE (Firebase Firestore orqali) ===
+// FBDATA va fbSaveField firebase_layer.js da e'lon qilingan (global window orqali)
 var D = {
-  sales: function() { return ls('Ds'); },
-  setSales: function(v) { ls('Ds', v); },
-  zp: function() { return ls('Dz'); },
-  setZp: function(v) { ls('Dz', v); },
-  klik: function() { return ls('Dk'); },
-  setKlik: function(v) { ls('Dk', v); },
-  exp: function() { return ls('De'); },
-  setExp: function(v) { ls('De', v); }
+  sales: function() { return window.FBDATA.sales || {}; },
+  setSales: function(v) { window.fbSaveField('sales', v); },
+  zp: function() { return window.FBDATA.zp || {}; },
+  setZp: function(v) { window.fbSaveField('zp', v); },
+  klik: function() { return window.FBDATA.klik || {}; },
+  setKlik: function(v) { window.fbSaveField('klik', v); },
+  exp: function() { return window.FBDATA.exp || {}; },
+  setExp: function(v) { window.fbSaveField('exp', v); }
 };
 
 // === SELLERS ===
 function getSellers() {
-  var saved = localStorage.getItem('sellers');
-  if (saved) { try { return JSON.parse(saved); } catch(e) {} }
+  var arr = window.FBDATA.sellers;
+  if (arr && arr.length) return arr;
   return [
     {id:'tanya', name:'Tanya', cls:'t', fixedPul:50000},
     {id:'sveta', name:'Sveta', cls:'s', fixedPul:50000},
     {id:'dilnoza', name:'Dilnoza', cls:'d', fixedPul:0}
   ];
 }
-function saveSellersData(arr) { localStorage.setItem('sellers', JSON.stringify(arr)); rebuildAll(); }
+function saveSellersData(arr) { window.fbSaveFieldImmediate('sellers', arr).then(rebuildAll); }
 
 var SELLERS = [];
 var FIXED_PUL = {};
@@ -851,8 +1057,6 @@ function autoSave() {
     setSt('saveSt', 'сақланди', 'ok');
     setTimeout(function() { setSt('saveSt', ''); }, 2000);
     if (curPage === 2) renderWeek();
-    var url = localStorage.getItem('sheetUrl') || '';
-    if (url) syncSheets(true);
   }, 700);
 }
 
@@ -1197,9 +1401,19 @@ function getMonthDays() {
 function getMonthWeeks() {
   var days = getMonthDays();
   var S = D.sales(), K = D.klik(), Z = D.zp(), E = D.exp();
+  // Oyni haqiqiy hafta chegaralari (Seshanba-Dushanba) bo'yicha bo'lish
   var weeks = [];
-  for (var i = 0; i < days.length; i += 7) {
-    var chunk = days.slice(i, i+7);
+  var chunk = [];
+  days.forEach(function(d) {
+    chunk.push(d);
+    // Dushanba (1) = hafta oxiri, yoki oyning oxirgi kuni
+    if (d.getDay() === 1 || d.getDate() === days[days.length-1].getDate()) {
+      weeks.push(chunk);
+      chunk = [];
+    }
+  });
+  if (chunk.length > 0) weeks.push(chunk); // qolgan kunlar
+  return weeks.map(function(chunk) {
     var kassa = 0, нахт = 0, misc = 0;
     chunk.forEach(function(d) {
       var k = dKey(d);
@@ -1213,9 +1427,8 @@ function getMonthWeeks() {
       });
       EXP_FIELDS.forEach(function(f){misc+=num((E[k]||{})[f]);});
     });
-    weeks.push({dates:chunk, kassa:kassa, нахт:нахт, misc:misc});
-  }
-  return weeks;
+    return {dates:chunk, kassa:kassa, нахт:нахт, misc:misc};
+  });
 }
 
 function calcMonthStats() {
@@ -1386,71 +1599,21 @@ function sendWeekTg() {
   tgSend(lines.join('\n'), 'weekTgSt');
 }
 
-// === GOOGLE SHEETS ===
-function syncSheets(silent) {
-  var url = localStorage.getItem('sheetUrl')||'';
-  if (!url) { if (!silent) setSt('syncSt', 'Созламаларда URL киритинг', 'err'); return; }
-  if (!silent) setSt('syncSt', 'Синхрон...', 'ld');
-  setCloud('spin', 'синхрон...');
-  var dates = getWeekDates(weekOffset);
-  var payload = {
-    action:'syncAll', weekLabel:dFull(dates[6]),
-    dates:dates.map(function(d){return dKey(d);}),
-    dateLabels:dates.map(function(d){return d.getDate()+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear();}),
-    sellers:SELLERS.map(function(s){return {id:s.id,name:s.name};}),
-    sales:D.sales(), zp:D.zp(), klik:D.klik(), exp:D.exp()
-  };
-  fetch(url, {method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(payload), mode:'no-cors'})
-    .then(function() {
-      var now = new Date(), ts = now.getHours()+':'+pad(now.getMinutes());
-      localStorage.setItem('lastSync', ts);
-      setCloud('ok', ts);
-      if (!silent) { setSt('syncSt', 'Синхронланди!', 'ok'); toast('Google Jadval yangilandi', 'ok'); }
-    })
-    .catch(function(e) { setCloud('err', 'хато'); if (!silent) setSt('syncSt', 'Хато: '+e.message, 'err'); });
-}
-function restoreFromSheets() {
-  var url = localStorage.getItem('sheetUrl')||'';
-  if (!url) { setSt('sheetSt', 'URL kiriting', 'err'); return; }
-  setSt('sheetSt', 'Юкланмоқда...', 'ld');
-  fetch(url + '?action=getData')
-    .then(function(r){return r.json();})
-    .then(function(j){
-      if (j.ok && j.data) {
-        if (j.data.sales) D.setSales(j.data.sales);
-        if (j.data.zp) D.setZp(j.data.zp);
-        if (j.data.klik) D.setKlik(j.data.klik);
-        if (j.data.exp) D.setExp(j.data.exp);
-        setSt('sheetSt', 'Тикланди!', 'ok');
-        toast('Ma\u02BBlumotlar tiklandi', 'ok');
-        if (curPage===2) renderWeek();
-      } else setSt('sheetSt', 'Маълумот йўқ', 'err');
-    })
-    .catch(function(e){setSt('sheetSt', 'Хато: '+e.message, 'err');});
-}
+// === FIREBASE CLOUD STATUS ===
+// Real-time holat - Firestore onSnapshot orqali avtomatik yangilanadi.
+// fbDataChangeIndicator() firebase_layer.js dan chaqiriladi.
 function setCloud(state, text) {
   var dot = document.getElementById('cdot'), info = document.getElementById('cinfo');
+  if (!dot || !info) return;
   dot.className = 'cdot' + (state?' '+state:'');
   info.textContent = text;
 }
 function showSyncInfo() {
-  var last = localStorage.getItem('lastSync')||'ҳеч қачон';
-  toast('Охирги синхрон: ' + last);
+  toast('Firebase Cloud — реал вақт синхрон фаол');
 }
-
-// === AUTO SYNC ===
-function startAutoSync() {
-  stopAutoSync();
-  var url = localStorage.getItem('sheetUrl')||'';
-  if (!url) return;
-  syncInterval = setInterval(function(){syncSheets(true);}, 5*60*1000);
-}
-function stopAutoSync() { if (syncInterval) { clearInterval(syncInterval); syncInterval=null; } }
-function toggleAutoSync() {
-  var tg = document.getElementById('autoSyncTg');
-  var on = tg.classList.toggle('on');
-  localStorage.setItem('autoSync', on?'1':'0');
-  if (on) startAutoSync(); else stopAutoSync();
+function fbDataChangeIndicator() {
+  setCloud('ok', 'онлайн');
+  setTimeout(function(){ setCloud('ok', 'онлайн'); }, 600);
 }
 
 // === EXPORT ===
@@ -1555,33 +1718,30 @@ function initFromHash(){
   var s = decSet(h); if (!s) return;
   if (s.t && !localStorage.getItem('tgToken')) localStorage.setItem('tgToken', s.t);
   if (s.c && !localStorage.getItem('tgChat')) localStorage.setItem('tgChat', s.c);
-  if (s.u && !localStorage.getItem('sheetUrl')) localStorage.setItem('sheetUrl', s.u);
 }
 function saveSets(){
-  var tok=document.getElementById('sTok').value.trim();
-  var chat=document.getElementById('sChat').value.trim();
-  var url=document.getElementById('sUrl').value.trim();
-  localStorage.setItem('tgToken',tok); localStorage.setItem('tgChat',chat); localStorage.setItem('sheetUrl',url);
-  setCloud(url?'ok':'','');
-  if (url && localStorage.getItem('autoSync')!=='0') startAutoSync();
+  var tokEl=document.getElementById('sTok'), chatEl=document.getElementById('sChat');
+  var tok = tokEl ? tokEl.value.trim() : '';
+  var chat = chatEl ? chatEl.value.trim() : '';
+  localStorage.setItem('tgToken',tok); localStorage.setItem('tgChat',chat);
 }
 function loadSets(){
   initFromHash();
-  var t=document.getElementById('sTok'), c=document.getElementById('sChat'), u=document.getElementById('sUrl');
+  var t=document.getElementById('sTok'), c=document.getElementById('sChat');
   if(t) t.value=localStorage.getItem('tgToken')||'';
   if(c) c.value=localStorage.getItem('tgChat')||'';
-  if(u) u.value=localStorage.getItem('sheetUrl')||'';
-  var as=localStorage.getItem('autoSync')!=='0';
-  var atg=document.getElementById('autoSyncTg'); if(atg) atg.classList.toggle('on',as);
   var dark=document.documentElement.getAttribute('data-theme')==='dark';
   var ttg=document.getElementById('themeTg'); if(ttg) ttg.classList.toggle('on',dark);
 }
-function showSettings(){ loadSets(); renderSelMgmt(); document.getElementById('setModal').style.display='block'; }
+function showSettings(){
+  if (!window.isAdmin || !window.isAdmin()) { toast('Фақат администратор учун', 'err'); return; }
+  loadSets(); renderSelMgmt(); document.getElementById('setModal').style.display='block';
+}
 function closeSettings(){ document.getElementById('setModal').style.display='none'; }
 function saveBm(){
-  var t=document.getElementById('sTok').value.trim(), c=document.getElementById('sChat').value.trim(), u=document.getElementById('sUrl').value.trim();
-  if(!t&&!c&&!u){setSt('bmSt','Созламаларни киритинг!','err');return;}
-  var enc=encSet(t,c,u);
+  var t=document.getElementById('sTok').value.trim(), c=document.getElementById('sChat').value.trim();
+  if(!t&&!c){setSt('bmSt','Созламаларни киритинг!','err');return;}
+  var enc=encSet(t,c,'');
   var full=location.origin+location.pathname+'#'+enc;
   document.getElementById('bmLink').textContent=full;
   document.getElementById('bmWrap').style.display='block';
@@ -1593,9 +1753,10 @@ function copyBm(){
   else{var el=document.createElement('textarea');el.value=link;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);toast('Нусхаланди!','ok');}
 }
 function clearAll(){
-  if(!confirm('Барча маълумотларни ўчириш?')) return;
-  ['Ds','Dz','Dk','De','qhist'].forEach(function(k){localStorage.removeItem(k);});
-  toast('Ma\u02BBlumotlar o\u02BBchirildi','err'); closeSettings();
+  if (!window.isAdmin || !window.isAdmin()) { toast('Фақат администратор учун', 'err'); return; }
+  if(!confirm('Барча маълумотларни ўчириш? Бу барча қурилмаларга таъсир қилади!')) return;
+  D.setSales({}); D.setZp({}); D.setKlik({}); D.setExp({});
+  toast('Маълумотлар ўчирилди','err'); closeSettings();
   if(curPage===2) renderWeek();
 }
 
@@ -1616,6 +1777,7 @@ function renderSelMgmt(){
   }).join('');
 }
 function addSeller(){
+  if (!window.isAdmin || !window.isAdmin()) { toast('Фақат администратор учун', 'err'); return; }
   var arr=getSellers(), idx=arr.length;
   arr.push({id:'sel'+Date.now(), name:'Сотувчи '+(idx+1), cls:SELLER_CLS[idx%SELLER_CLS.length], fixedPul:0});
   saveSellersData(arr); renderSelMgmt();
@@ -1627,6 +1789,7 @@ function delSeller(i){
   arr.splice(i,1); saveSellersData(arr); renderSelMgmt(); setSt('selSt','Ўчирилди','ok');
 }
 function saveSellers(){
+  if (!window.isAdmin || !window.isAdmin()) { toast('Фақат администратор учун', 'err'); return; }
   var arr=getSellers();
   arr.forEach(function(s,i){
     var n=document.getElementById('snm'+i), p=document.getElementById('spl'+i);
@@ -1784,8 +1947,7 @@ function backupData() {
       sellers: getSellers(),
       settings: {
         tgToken: localStorage.getItem('tgToken')||'',
-        tgChat: localStorage.getItem('tgChat')||'',
-        sheetUrl: localStorage.getItem('sheetUrl')||''
+        tgChat: localStorage.getItem('tgChat')||''
       }
     };
     var json = JSON.stringify(backup, null, 2);
@@ -1803,79 +1965,118 @@ function backupData() {
     setSt('backupSt', 'Xato: ' + e.message, 'err');
   }
 }
-function restoreData(input) {
-  var file = input.files[0];
-  if (!file) return;
-  setSt('backupSt', 'O\u02BBqilmoqda...', 'ld');
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      var data = JSON.parse(e.target.result);
-      if (!data.version || !data.sales) throw new Error('Noto\u02BBg\u02BBri backup fayli');
-      if (!confirm('Joriy ma\u02BBlumotlar o\u02BBchib yangilari tiklanadi. Davom etasizmi?')) {
-        setSt('backupSt', 'Bekor qilindi', '');
-        input.value = '';
-        return;
-      }
-      if (data.sales) D.setSales(data.sales);
-      if (data.zp) D.setZp(data.zp);
-      if (data.klik) D.setKlik(data.klik);
-      if (data.exp) D.setExp(data.exp);
-      if (data.sellers) { localStorage.setItem('sellers', JSON.stringify(data.sellers)); rebuildAll(); }
-      if (data.settings) {
-        if (data.settings.tgToken)  localStorage.setItem('tgToken',  data.settings.tgToken);
-        if (data.settings.tgChat)   localStorage.setItem('tgChat',   data.settings.tgChat);
-        if (data.settings.sheetUrl) localStorage.setItem('sheetUrl', data.settings.sheetUrl);
-        loadSets();
-        var su = data.settings.sheetUrl;
-        if (su && localStorage.getItem('autoSync') !== '0') startAutoSync();
-        setCloud(su ? 'ok' : 'off', su ? (localStorage.getItem('lastSync') || 'ulangan') : 'oflayn');
-      }
-      setSt('backupSt', 'Tiklandi! ✓', 'ok');
-      toast('Ma\u02BBlumotlar tiklandi', 'ok');
-      // Barcha sahifalarni to'liq qayta yuklash
-      selDate = null;
-      initInputPage();       // input page kunlarini yangilash
-      if (curPage === 0) {
-        // selDate ni birinchi kunga o'rnatish
-        var wd = getWeekDates(weekOffset);
-        selDate = wd[0];
-        loadInputFields();
-      } else if (curPage === 1) {
-        initDayPage();
-      } else if (curPage === 2) {
-        renderWeek();
-      } else if (curPage === 3) {
-        renderMonth();
-      }
-    } catch(err) {
-      setSt('backupSt', 'Xato: ' + err.message, 'err');
-    }
-    input.value = '';
-  };
-  reader.readAsText(file);
-}
-
 // === HELPERS ===
 function setSt(id,msg,cls){var el=document.getElementById(id);if(!el)return;el.textContent=msg;el.className='st'+(cls?' '+cls:'');}
 function toast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.className='toast'+(type?' '+type:'');t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
 
-// === INIT ===
-loadTheme();
-initFromHash();
-rebuildAll();
-updateWChip();
-initInputPage();
-var ls2 = localStorage.getItem('lastSync');
-var su = localStorage.getItem('sheetUrl')||'';
-setCloud(su?(ls2?'ok':'off'):'off', su?(ls2?ls2:'ulangan'):'oflayn');
-if(su && localStorage.getItem('autoSync')!=='0') startAutoSync();
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function(){});
-(function(){
-  var h=location.hash.slice(1);
-  var pm={day:1,week:2,month:3};
-  if(h in pm) setTimeout(function(){goPage(pm[h],null);},100);
-})();
+// === LOGIN ===
+function doLogin() {
+  var phone = document.getElementById('loginPhone').value.trim();
+  var pass  = document.getElementById('loginPass').value;
+  var btn   = document.getElementById('loginBtn');
+  var errEl = document.getElementById('loginErr');
+  errEl.textContent = '';
+  if (!phone || !pass) { errEl.textContent = 'Телефон ва паролни киритинг'; return; }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="login-spin"></span>КИРИШ...';
+  window.fbLogin(phone, pass, function(msg) {
+    errEl.textContent = msg;
+    btn.disabled = false;
+    btn.textContent = 'КИРИШ';
+  });
+}
+// Enter tugmasi bilan kirish
+document.addEventListener('DOMContentLoaded', function() {
+  var pp = document.getElementById('loginPass');
+  if (pp) pp.addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+  var ph = document.getElementById('loginPhone');
+  if (ph) ph.addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('loginPass').focus(); });
+});
+
+
+// === MIGRATION: localStorage → Firebase ===
+function importFromJson(input) {
+  var file = input.files[0];
+  if (!file) return;
+  setSt('migSt', 'O\u02BBqilmoqda...', 'ld');
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      // Eski backup format: {version, sales, zp, klik, exp, sellers, settings}
+      if (!data.sales && !data.zp) throw new Error('Noto\u02BBg\u02BBri format');
+      if (!confirm('Firestore ga import qilinadi. Mavjud malumotlar ustiga yoziladi. Davom etasizmi?')) {
+        setSt('migSt', 'Bekor qilindi', '');
+        input.value = '';
+        return;
+      }
+      setSt('migSt', 'Firestore ga yuborilmoqda...', 'ld');
+      var patch = {};
+      if (data.sales)   patch.sales   = data.sales;
+      if (data.zp)      patch.zp      = data.zp;
+      if (data.klik)    patch.klik    = data.klik;
+      if (data.exp)     patch.exp     = data.exp;
+      if (data.sellers && data.sellers.length) patch.sellers = data.sellers;
+
+      // Barcha maydonlarni bir yo'la yozish
+      window.fbSaveFieldImmediate && Object.keys(patch).forEach(function(k) {
+        window.FBDATA[k] = patch[k];
+      });
+
+      // setDoc merge bilan
+      var { setDoc, doc } = window._fbImports || {};
+      if (!setDoc) {
+        // fallback: individual fields
+        if (patch.sales)   window.fbSaveField('sales', patch.sales);
+        if (patch.zp)      window.fbSaveField('zp', patch.zp);
+        if (patch.klik)    window.fbSaveField('klik', patch.klik);
+        if (patch.exp)     window.fbSaveField('exp', patch.exp);
+        if (patch.sellers) window.fbSaveField('sellers', patch.sellers);
+        setSt('migSt', 'Import yuborildi! Firestore yangilanmoqda...', 'ok');
+        toast('Import muvaffaqiyatli! ✓', 'ok');
+      }
+      input.value = '';
+    } catch(err) {
+      setSt('migSt', 'Xato: ' + err.message, 'err');
+      input.value = '';
+    }
+  };
+  reader.readAsText(file);
+}
+
+// === APP INIT (Firebase tayyor bo'lgach chaqiriladi) ===
+function initAppAfterAuth() {
+  loadTheme();
+  initFromHash();
+  rebuildAll();
+  updateWChip();
+  initInputPage();
+  setCloud('ok', 'онлайн');
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function(){});
+  (function(){
+    var h=location.hash.slice(1);
+    var pm={day:1,week:2,month:3};
+    if(h in pm) setTimeout(function(){goPage(pm[h],null);},100);
+  })();
+}
+
+// Firebase auth holati o'zgarganda chaqiriladi (firebase_layer.js)
+window.onFbReady = function() {
+  initAppAfterAuth();
+};
+
+// Firestore ma'lumotlari yangilanganda chaqiriladi (real-time, boshqa qurilmadan ham)
+window.onFbDataChange = function() {
+  fbDataChangeIndicator();
+  rebuildAll();
+  // Joriy sahifani yangilash, lekin faqat ilova ishga tushgandan keyin
+  if (typeof curPage === 'undefined') return;
+  if (curPage === 0 && selDate) loadInputFields();
+  else if (curPage === 1) initDayPage();
+  else if (curPage === 2) renderWeek();
+  else if (curPage === 3) renderMonth();
+};
+
 </script>
 </body>
 </html>
