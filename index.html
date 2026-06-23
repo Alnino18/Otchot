@@ -942,19 +942,20 @@ function startFirestoreSync() {
   });
 }
 
-// ── FIRESTORE: yozish (debounced) ──
-var fbWriteTimer = null;
+// ── FIRESTORE: yozish (debounced, har field alohida timer) ──
+var fbWriteTimers = {};
 window.fbSaveField = function(field, value) {
   window.FBDATA[field] = value;
-  clearTimeout(fbWriteTimer);
-  fbWriteTimer = setTimeout(function() {
+  // Har field uchun alohida timer — biri ikkinchisini bekor qilmaydi
+  clearTimeout(fbWriteTimers[field]);
+  fbWriteTimers[field] = setTimeout(function() {
     var patch = {};
-    patch[field] = value;
+    patch[field] = window.FBDATA[field]; // Eng yangi qiymatni olish
     setDoc(window.FB.docRef, patch, {merge: true}).catch(function(err) {
       console.error('Firestore yozish xato:', err);
       if (window.toast) window.toast('Сақлашда хато: ' + err.message, 'err');
     });
-  }, 350);
+  }, 600);
 };
 
 window.fbSaveFieldImmediate = function(field, value) {
@@ -962,6 +963,19 @@ window.fbSaveFieldImmediate = function(field, value) {
   var patch = {};
   patch[field] = value;
   return setDoc(window.FB.docRef, patch, {merge: true});
+};
+
+// Barcha asosiy fieldlarni BITTA yozuvda saqlash (race condition yo'q)
+window.fbSaveAll = function() {
+  return setDoc(window.FB.docRef, {
+    sales: window.FBDATA.sales || {},
+    zp:    window.FBDATA.zp    || {},
+    klik:  window.FBDATA.klik  || {},
+    exp:   window.FBDATA.exp   || {}
+  }, {merge: true}).catch(function(err) {
+    console.error('Firestore saveAll xato:', err);
+    if (window.toast) window.toast('Сақлашда хато', 'err');
+  });
 };
 
 </script>
@@ -1302,11 +1316,13 @@ function addKrow() {
 
 function autoSave() {
   clearTimeout(saveTimer);
+  _lastSaveTime = Date.now(); // Foydalanuvchi yozayotganini belgilaymiz
   setSt('saveSt', 'сақланяпти...', 'ld');
   saveTimer = setTimeout(function() {
-    saveTimer = null;  // Saqlash tugadi — endi onFbDataChange yangilashi mumkin
+    saveTimer = null;
+    _lastSaveTime = Date.now(); // Saqlash vaqtini yangilaymiz
     saveFields();
-    setSt('saveSt', 'сақланди', 'ok');
+    setSt('saveSt', 'сақланди ✓', 'ok');
     setTimeout(function() { setSt('saveSt', ''); }, 2000);
     if (curPage === 2) renderWeek();
   }, 700);
@@ -1315,29 +1331,37 @@ function autoSave() {
 function saveFields() {
   if (!selDate || !curSeller) return;
   var k = dKey(selDate);
+
+  // Barcha fieldlarni FBDATA ichida yangilaymiz (lokal)
   var sales = D.sales();
   if (!sales[k]) sales[k] = {};
   sales[k][curSeller] = {nalichka: getRaw(document.getElementById('f-nal'))};
-  D.setSales(sales);
+  window.FBDATA.sales = sales;
+
   var zp = D.zp();
   if (!zp[k]) zp[k] = {};
   zp[k][curSeller] = {
     zarplata: getRaw(document.getElementById('f-zp')),
     pulkira: FIXED_PUL[curSeller] !== undefined ? FIXED_PUL[curSeller] : getRaw(document.getElementById('f-pul'))
   };
-  D.setZp(zp);
+  window.FBDATA.zp = zp;
+
   var klik = D.klik();
   if (!klik[k]) klik[k] = {};
   klik[k][curSeller] = [];
   document.querySelectorAll('#krows input').forEach(function(i) { klik[k][curSeller].push(getRaw(i)); });
-  D.setKlik(klik);
+  window.FBDATA.klik = klik;
+
   var exp = D.exp();
-  if (!exp[k]) exp[k] = {};  // Avvalgi ma'lumotni o'chirmaymiz
+  if (!exp[k]) exp[k] = {};
   EXP_FIELDS.forEach(function(f) {
     var el = document.getElementById('e-' + f);
     if (el) exp[k][f] = getRaw(el);
   });
-  D.setExp(exp);
+  window.FBDATA.exp = exp;
+
+  // Bitta atomic write — hamma field bir vaqtda, race condition yo'q
+  if (window.fbSaveAll) window.fbSaveAll();
 }
 
 // === DAY PAGE ===
@@ -2364,15 +2388,20 @@ window.onFbReady = function() {
 };
 
 // Firestore ma'lumotlari yangilanganda chaqiriladi (real-time, boshqa qurilmadan ham)
+// Foydalanuvchi so'nggi saqlagan vaqt (input sahifasini qachon yangilash kerakligini bilish uchun)
+var _lastSaveTime = 0;
+
 window.onFbDataChange = function() {
   fbDataChangeIndicator();
   rebuildAll();
   if (typeof curPage === 'undefined') return;
-  // Kiriш sahifasida foydalanuvchi yozayotgan bo'lsa, yangilamaymiz
-  // (saveTimer aktiv bo'lsa — foydalanuvchi yozayapti)
   if (curPage === 0) {
-    if (selDate && !saveTimer) loadInputFields();
-    // saveTimer aktiv bo'lsa — faqat ko'rsatkich yangilash, inputlarni bezovta qilmaymiz
+    // Agar foydalanuvchi yaqinda (2 son ichida) saqlagan bo'lsa — inputlarni bezovta qilmaymiz
+    // Bu Firestore snapshot-ning o'zimiz yozgan ma'lumotni qayta yuklashini oldini oladi
+    var now = Date.now();
+    if (selDate && (now - _lastSaveTime > 2000)) {
+      loadInputFields();
+    }
   } else if (curPage === 1) initDayPage();
   else if (curPage === 2) renderWeek();
   else if (curPage === 3) renderMonth();
