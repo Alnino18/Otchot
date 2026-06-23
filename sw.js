@@ -1,4 +1,4 @@
-const CACHE = 'hisobot-fb-v2';
+const CACHE = 'hisobot-fb-v1';
 const ASSETS = ['./index.html', './manifest.json'];
 
 self.addEventListener('install', function(e) {
