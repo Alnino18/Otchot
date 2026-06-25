@@ -966,13 +966,16 @@ window.fbSaveFieldImmediate = function(field, value) {
 };
 
 // Barcha asosiy fieldlarni BITTA yozuvda saqlash (race condition yo'q)
-window.fbSaveAll = function() {
+window.fbSaveAll = function(callback) {
   return setDoc(window.FB.docRef, {
-    sales: window.FBDATA.sales || {},
-    zp:    window.FBDATA.zp    || {},
-    klik:  window.FBDATA.klik  || {},
-    exp:   window.FBDATA.exp   || {}
-  }, {merge: true}).catch(function(err) {
+    sellers: window.FBDATA.sellers || [],
+    sales:   window.FBDATA.sales   || {},
+    zp:      window.FBDATA.zp      || {},
+    klik:    window.FBDATA.klik    || {},
+    exp:     window.FBDATA.exp     || {}
+  }, {merge: true}).then(function() {
+    if (callback) callback();
+  }).catch(function(err) {
     console.error('Firestore saveAll xato:', err);
     if (window.toast) window.toast('Сақлашда хато', 'err');
   });
@@ -1028,7 +1031,15 @@ function getSellers() {
     {id:'dilnoza', name:'Dilnoza', cls:'d', fixedPul:0}
   ];
 }
-function saveSellersData(arr) { window.fbSaveFieldImmediate('sellers', arr).then(rebuildAll); }
+function saveSellersData(arr) {
+  // sellers + barcha fieldlarni bitta yozuvda saqlaymiz
+  window.FBDATA.sellers = arr;
+  _lastSaveTime = Date.now();
+  window.fbSaveAll(function() {
+    rebuildAll();
+    if (curPage === 0 && selDate) loadInputFields();
+  });
+}
 
 var SELLERS = [];
 var FIXED_PUL = {};
