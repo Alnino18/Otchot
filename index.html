@@ -1032,13 +1032,10 @@ function getSellers() {
   ];
 }
 function saveSellersData(arr) {
-  // sellers + barcha fieldlarni bitta yozuvda saqlaymiz
   window.FBDATA.sellers = arr;
-  _lastSaveTime = Date.now();
-  window.fbSaveAll(function() {
-    rebuildAll();
-    if (curPage === 0 && selDate) loadInputFields();
-  });
+  window._lastSaveTime = Date.now();
+  rebuildAll();
+  window.fbSaveAll();
 }
 
 var SELLERS = [];
@@ -1327,11 +1324,11 @@ function addKrow() {
 
 function autoSave() {
   clearTimeout(saveTimer);
-  _lastSaveTime = Date.now(); // Foydalanuvchi yozayotganini belgilaymiz
+  window._lastSaveTime = Date.now(); // Foydalanuvchi yozayotganini belgilaymiz
   setSt('saveSt', 'сақланяпти...', 'ld');
   saveTimer = setTimeout(function() {
     saveTimer = null;
-    _lastSaveTime = Date.now(); // Saqlash vaqtini yangilaymiz
+    window._lastSaveTime = Date.now(); // Saqlash vaqtini yangilaymiz
     saveFields();
     setSt('saveSt', 'сақланди ✓', 'ok');
     setTimeout(function() { setSt('saveSt', ''); }, 2000);
@@ -2400,7 +2397,7 @@ window.onFbReady = function() {
 
 // Firestore ma'lumotlari yangilanganda chaqiriladi (real-time, boshqa qurilmadan ham)
 // Foydalanuvchi so'nggi saqlagan vaqt (input sahifasini qachon yangilash kerakligini bilish uchun)
-var _lastSaveTime = 0;
+window._lastSaveTime = 0;
 
 window.onFbDataChange = function() {
   fbDataChangeIndicator();
@@ -2410,7 +2407,7 @@ window.onFbDataChange = function() {
     // Agar foydalanuvchi yaqinda (2 son ichida) saqlagan bo'lsa — inputlarni bezovta qilmaymiz
     // Bu Firestore snapshot-ning o'zimiz yozgan ma'lumotni qayta yuklashini oldini oladi
     var now = Date.now();
-    if (selDate && (now - _lastSaveTime > 2000)) {
+    if (selDate && (now - (window._lastSaveTime || 0) > 3000)) {
       loadInputFields();
     }
   } else if (curPage === 1) initDayPage();
