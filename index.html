@@ -656,7 +656,10 @@ nav button.on::after{
           <button class="expbtn" onclick="exportCSV()" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:var(--bl)">
             <span class="ei">&#128203;</span>CSV
           </button>
-          <button class="expbtn" onclick="sendToSheets()" id="sheetsBtnAdmin" style="background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.3);color:#eab308;grid-column:span 2">
+          <button class="expbtn" onclick="connectGoogleSheets()" id="sheetsConnectBtn" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:var(--bl);grid-column:span 2">
+            <span class="ei">&#128279;</span>Google Sheets'га улаш
+          </button>
+          <button class="expbtn" onclick="sendToSheetsDirect()" id="sheetsBtnAdmin" style="background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.3);color:#eab308;grid-column:span 2">
             <span class="ei">&#128202;</span>Google Sheets га юбориш
           </button>
         </div>
@@ -788,6 +791,9 @@ nav button.on::after{
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Google Identity Services — Sheets API'га OAuth орқали тўғридан-тўғри уланиш учун -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <script type="module">
 // ════════════════════════════════════════════════════════════
@@ -1037,7 +1043,11 @@ var MONTHS = ['Январь','Феврал','Март','Апрель','Май','
 
 // === STATE ===
 var weekOffset = 0;
-var SHEETS_URL = 'https://script.google.com/macros/s/AKfycby-cHgMXrwsW05TttfMBRqovoLlad9epQLeZpKfS1iqU3lBXnKqPUDoTbGZ-RoAGfPa/exec';
+var SHEETS_URL = 'https://script.google.com/macros/s/AKfycby-cHgMXrwsW05TttfMBRqovoLlad9epQLeZpKfS1iqU3lBXnKqPUDoTbGZ-RoAGfPa/exec'; // ЭСКИ усул (Apps Script) — эндиликда шарт эмас
+// ── ЯНГИ усул: Google Sheets API'га OAuth орқали тўғридан-тўғри уланиш ──
+// Google Cloud Console'дан олинадиган қийматлар (SETUP.md'да батафсил йўриқнома бор):
+var GOOGLE_CLIENT_ID = '775609974209-eefakni0o4vhs4nvj6s7ssmud4l4faot.apps.googleusercontent.com';
+var SPREADSHEET_ID   = '156IGLHHwpMu75-ysc4fUQ8baAnClDmYH9Od4s9Tkmls';
 var curPage = 0;
 var curSeller = null;
 var curDaySeller = null;
@@ -2043,6 +2053,361 @@ function sendToSheets() {
     setSt('exportSt', 'Хато: ' + e.message, 'err');
   }
 }
+// ↑ ЭСКИ усул (Apps Script орқали, "кўр" no-cors). Эндиликда ишлатилмайди,
+//   фақат заҳира сифатида қолдирилди. Ҳозирги тугма sendToSheetsDirect() ни чақиради.
+
+// ════════════════════════════════════════════════════════════
+// GOOGLE SHEETS API — OAuth орқали тўғридан-тўғри уланиш
+// (Apps Script'сиз; жавобни ҳақиқатда ўқиймиз, хато бўлса дарҳол биламиз)
+// ════════════════════════════════════════════════════════════
+var gTokenClient = null, gAccessToken = null, gTokenExpiry = 0;
+
+function isSheetsConfigured() {
+  return GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID.indexOf('СИЗНИНГ_') !== 0 &&
+         SPREADSHEET_ID   && SPREADSHEET_ID.indexOf('СИЗНИНГ_') !== 0;
+}
+
+function initGoogleAuth() {
+  if (!isSheetsConfigured()) return;
+  if (!window.google || !google.accounts || !google.accounts.oauth2) {
+    // GIS скрипти ҳали юкланмаган — бир оз кутиб қайта уринамиз
+    setTimeout(initGoogleAuth, 300);
+    return;
+  }
+  if (gTokenClient) return;
+  gTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: ''
+  });
+}
+
+// interactive=true → Google улаш ойнасини очади (фақат тугма босилганда чақирилиши шарт)
+// interactive=false → фақат аввал берилган рухсатни "жимгина" янгилашга уринади
+function ensureGoogleToken(interactive) {
+  return new Promise(function(resolve, reject) {
+    if (!isSheetsConfigured()) { reject(new Error('GOOGLE_CLIENT_ID / SPREADSHEET_ID киритилмаган')); return; }
+    if (gAccessToken && Date.now() < gTokenExpiry - 60000) { resolve(gAccessToken); return; }
+    if (!gTokenClient) initGoogleAuth();
+    if (!gTokenClient) { reject(new Error('Google Auth ҳали тайёр эмас, бир оз кутиб қайта уриниб кўринг')); return; }
+    gTokenClient.callback = function(resp) {
+      if (resp.error) { reject(new Error(resp.error)); return; }
+      gAccessToken = resp.access_token;
+      gTokenExpiry = Date.now() + (resp.expires_in * 1000);
+      resolve(gAccessToken);
+    };
+    try {
+      gTokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+    } catch(e) { reject(e); }
+  });
+}
+
+function connectGoogleSheets() {
+  if (!isSheetsConfigured()) {
+    toast('Аввал GOOGLE_CLIENT_ID ва SPREADSHEET_ID ни index.html га қўйинг (SETUP.md’га қаранг)', 'err');
+    return;
+  }
+  setSt('exportSt', 'Google улаш ойнаси очилмоқда...', 'ld');
+  ensureGoogleToken(true).then(function() {
+    setSt('exportSt', 'Google Sheets билан уланди ✓', 'ok');
+    toast('Google Sheets билан уланди!', 'ok');
+  }).catch(function(err) {
+    setSt('exportSt', 'Улаш хатоси: ' + err.message, 'err');
+    toast('Улаш хатоси: ' + err.message, 'err');
+  });
+}
+
+function sheetsFetch(path, opts) {
+  opts = opts || {};
+  return ensureGoogleToken(false).then(function(token) {
+    var headers = Object.assign({'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'}, opts.headers || {});
+    return fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SPREADSHEET_ID + path, Object.assign({}, opts, {headers: headers}));
+  }).then(function(res) {
+    return res.json().catch(function(){ return {}; }).then(function(j) {
+      if (!res.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + res.status));
+      return j;
+    });
+  });
+}
+
+function getOrCreateSheetId(title) {
+  return sheetsFetch('?fields=sheets.properties').then(function(meta) {
+    var found = (meta.sheets || []).find(function(s) { return s.properties.title === title; });
+    if (found) return found.properties.sheetId;
+    return sheetsFetch(':batchUpdate', {
+      method: 'POST',
+      body: JSON.stringify({ requests: [{ addSheet: { properties: { title: title } } }] })
+    }).then(function(r) { return r.replies[0].addSheet.properties.sheetId; });
+  });
+}
+
+function hexToRgb01(hex) {
+  hex = (hex||'#ffffff').replace('#','');
+  if (hex.length === 3) hex = hex.split('').map(function(c){return c+c;}).join('');
+  var num = parseInt(hex, 16);
+  return { red: ((num>>16)&255)/255, green: ((num>>8)&255)/255, blue: (num&255)/255 };
+}
+
+// Умумий "грид қуручи" — .gs файлдаги row()/cell()/fmtNums() мантиғининг JS кўчирмаси.
+// values — Sheets API'га yozish uchun 2D массив; styleReqs — batchUpdate учун форматлаш so'rovlari.
+function makeGridBuilder(sheetId) {
+  var values = [];
+  var styleReqs = [];
+  var colWidthReqs = [];
+  function rowIdx() { return values.length; }
+  function addRow(vals, opt) {
+    values.push(vals);
+    var r = rowIdx() - 1;
+    if (opt) {
+      var fmt = {};
+      if (opt.bg) fmt.backgroundColor = hexToRgb01(opt.bg);
+      var tf = {};
+      if (opt.fg) tf.foregroundColor = hexToRgb01(opt.fg);
+      if (opt.size) tf.fontSize = opt.size;
+      tf.bold = !!opt.bold;
+      fmt.textFormat = tf;
+      if (opt.align) fmt.horizontalAlignment = opt.align;
+      styleReqs.push({
+        repeatCell: {
+          range: { sheetId: sheetId, startRowIndex: r, endRowIndex: r+1, startColumnIndex: 0, endColumnIndex: vals.length },
+          cell: { userEnteredFormat: fmt },
+          fields: 'userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)'
+        }
+      });
+    }
+    return r;
+  }
+  function numFmtRow(r, fromCol, toCol) {
+    styleReqs.push({
+      repeatCell: {
+        range: { sheetId: sheetId, startRowIndex: r, endRowIndex: r+1, startColumnIndex: fromCol, endColumnIndex: toCol },
+        cell: { userEnteredFormat: { numberFormat: { type: 'NUMBER', pattern: '#,##0' }, horizontalAlignment: 'RIGHT' } },
+        fields: 'userEnteredFormat(numberFormat,horizontalAlignment)'
+      }
+    });
+  }
+  function merge(r, colSpan) {
+    styleReqs.push({
+      mergeCells: {
+        range: { sheetId: sheetId, startRowIndex: r, endRowIndex: r+1, startColumnIndex: 0, endColumnIndex: colSpan },
+        mergeType: 'MERGE_ALL'
+      }
+    });
+  }
+  function colWidth(colIdx, px) {
+    colWidthReqs.push({
+      updateDimensionProperties: {
+        range: { sheetId: sheetId, dimension: 'COLUMNS', startIndex: colIdx, endIndex: colIdx+1 },
+        properties: { pixelSize: px },
+        fields: 'pixelSize'
+      }
+    });
+  }
+  return { values: values, addRow: addRow, numFmtRow: numFmtRow, merge: merge, colWidth: colWidth,
+           allRequests: function(){ return styleReqs.concat(colWidthReqs); } };
+}
+
+// ── ЛИСТ: ПРОДАЖИ (syncSalesSheet'нинг JS кўчирмаси) ──
+function buildSalesGrid(sheetId, data) {
+  var dates = data.dates || [], dl = data.dateLabels || dates, sel = data.sellers || [];
+  var S = data.sales||{}, Z = data.zp||{}, K = data.klik||{}, E = data.exp||{};
+  var EF = EXP_FIELDS;
+  var g = makeGridBuilder(sheetId);
+  var lastCol = dates.length + 2;
+
+  var r0 = g.addRow(['НЕДЕЛЬНЫЙ ОТЧЕТ ПРОДАЖ ' + (data.weekLabel||'')], {bg:'#1a6b3a', fg:'#ffffff', size:13, bold:true});
+  g.merge(r0, dates.length+2);
+
+  g.addRow(['Продажа'].concat(dl).concat(['','ОБЩ']), {bg:'#1a6b3a', fg:'#ffffff', size:9, bold:true});
+
+  function n(v){return Number(v)||0;} function sum(a){return a.reduce(function(x,y){return x+y;},0);}
+
+  sel.forEach(function(s) {
+    var pv = dates.map(function(dk){ return n(((S[dk]||{})[s.id]||{}).nalichka); });
+    var kv = dates.map(function(dk){ var a=((K[dk]||{})[s.id])||[]; return a.reduce(function(x,y){return x+n(y);},0); });
+    var tp = sum(pv), tk = sum(kv);
+    var r1 = g.addRow([s.name+' Наличка'].concat(pv).concat(['',tp]));
+    g.numFmtRow(r1, 1, lastCol);
+    var r2 = g.addRow(['  Клик'].concat(kv).concat(['',tk]));
+    g.numFmtRow(r2, 1, lastCol);
+  });
+
+  var kassaDay = dates.map(function(dk){
+    var v=0; sel.forEach(function(s){
+      v+=n(((S[dk]||{})[s.id]||{}).nalichka);
+      ((K[dk]||{})[s.id]||[]).forEach(function(x){v+=n(x);});
+    }); return v;
+  });
+  var rk = g.addRow(['КАССА'].concat(kassaDay).concat(['',sum(kassaDay)]), {bg:'#e8f5e9', fg:'#000000', bold:true});
+  g.numFmtRow(rk, 1, lastCol);
+
+  var rr = g.addRow(['Расходы'], {bg:'#c0392b', fg:'#ffffff', bold:true, align:'CENTER'});
+  g.merge(rr, dates.length+2);
+
+  sel.forEach(function(s) {
+    var zv = dates.map(function(dk){ return n(((Z[dk]||{})[s.id]||{}).zarplata); });
+    var pv = dates.map(function(dk){ return n(((Z[dk]||{})[s.id]||{}).pulkira); });
+    var r1 = g.addRow([s.name+' ЗП'].concat(zv).concat(['',sum(zv)]));
+    g.numFmtRow(r1, 1, lastCol);
+    var r2 = g.addRow(['  Йулкира'].concat(pv).concat(['',sum(pv)]));
+    g.numFmtRow(r2, 1, lastCol);
+  });
+
+  var miscDay = new Array(dates.length).fill(0), totMisc = 0;
+  EF.forEach(function(f) {
+    dates.forEach(function(dk,i){ var v=n((E[dk]||{})[f]); miscDay[i]+=v; totMisc+=v; });
+  });
+  var rm = g.addRow(['Прочие расходы'].concat(miscDay).concat(['',totMisc]));
+  g.numFmtRow(rm, 1, lastCol);
+
+  g.addRow(['']); // bo'sh qator
+
+  var obshDay = kassaDay.map(function(v,i){ return v + miscDay[i]; });
+  var ro = g.addRow(['Общая касса'].concat(obshDay).concat(['',sum(obshDay)]), {bg:'#1a6b3a', fg:'#ffffff', bold:true});
+  g.numFmtRow(ro, 1, lastCol);
+
+  var palDay = dates.map(function(dk){ var v=0; sel.forEach(function(s){ v+=n(((S[dk]||{})[s.id]||{}).nalichka); }); return v; });
+  var zpDay  = dates.map(function(dk){ var v=0; sel.forEach(function(s){ v+=n(((Z[dk]||{})[s.id]||{}).zarplata)+n(((Z[dk]||{})[s.id]||{}).pulkira); }); return v; });
+  var nahtDay = palDay.map(function(v,i){ return v - zpDay[i]; });
+  var rn = g.addRow(['Наличка колди'].concat(nahtDay).concat(['',sum(nahtDay)]), {bg:'#155724', fg:'#ffffff', bold:true});
+  g.numFmtRow(rn, 1, lastCol);
+
+  g.colWidth(0, 150);
+  for (var c=1; c<=dates.length; c++) g.colWidth(c, 90);
+  g.colWidth(dates.length+2, 110);
+
+  return g;
+}
+
+// ── ЛИСТ: РАСХОДЫ ──
+function buildRasxodGrid(sheetId, data) {
+  var dates=data.dates||[], dl=data.dateLabels||dates, E=data.exp||{};
+  var CATS=[['Зелень/Соль/Соя','zel'],['Пакет/Салфетки','pak'],['Обед/Кофе/Хлеб','obed'],
+    ['Гель/Азелит/Марля','gel'],['Уборка/Лампочка/Рем','ubork'],['Сул/Муз','sul'],['Прочие','prochie']];
+  var g = makeGridBuilder(sheetId);
+  var lastCol = dates.length + 2;
+  function n(v){return Number(v)||0;} function sum(a){return a.reduce(function(x,y){return x+y;},0);}
+
+  var r0 = g.addRow(['НЕДЕЛЬНЫЙ ОТЧЕТ РАСХОДОВ ' + (data.weekLabel||'')], {bg:'#1a6b3a', fg:'#ffffff', size:13, bold:true});
+  g.merge(r0, dates.length+2);
+  g.addRow(['Расход'].concat(dl).concat(['','ОБЩ']));
+
+  var dayTot = new Array(dates.length).fill(0);
+  CATS.forEach(function(pair){
+    var label=pair[0], field=pair[1];
+    var vals = dates.map(function(dk,i){ var v=n((E[dk]||{})[field]); dayTot[i]+=v; return v; });
+    var r = g.addRow([label].concat(vals).concat(['',sum(vals)]));
+    g.numFmtRow(r, 1, lastCol);
+  });
+  var rt = g.addRow(['ИТОГО'].concat(dayTot).concat(['',sum(dayTot)]), {bg:'#1a6b3a', fg:'#ffffff', bold:true});
+  g.numFmtRow(rt, 1, lastCol);
+
+  g.colWidth(0, 180);
+  for (var c=1; c<=dates.length; c++) g.colWidth(c, 90);
+  g.colWidth(dates.length+2, 110);
+  return g;
+}
+
+// ── ЛИСТ: КЛИК ──
+function buildKlikGrid(sheetId, data) {
+  var dates=data.dates||[], dl=data.dateLabels||dates, sel=data.sellers||[], K=data.klik||{};
+  var g = makeGridBuilder(sheetId);
+  function n(v){return Number(v)||0;}
+
+  g.addRow([''].concat(dl), {bg:'#1a6b3a', fg:'#ffffff', bold:true});
+
+  var byDate = {}; dates.forEach(function(dk){ byDate[dk] = []; });
+  sel.forEach(function(s){
+    dates.forEach(function(dk){
+      ((K[dk]||{})[s.id]||[]).forEach(function(v){ if (n(v)>0) byDate[dk].push(n(v)); });
+    });
+  });
+  var maxR = 1;
+  dates.forEach(function(dk){ if (byDate[dk].length > maxR) maxR = byDate[dk].length; });
+  var dayTot = new Array(dates.length).fill(0);
+  for (var i=0; i<maxR; i++) {
+    var vals = [''];
+    dates.forEach(function(dk,di){ var v = byDate[dk][i] || ''; if (v) dayTot[di]+=v; vals.push(v); });
+    g.addRow(vals);
+  }
+  g.addRow(['']);
+  var rt = g.addRow(['ИТОГО'].concat(dayTot), {bg:'#1a6b3a', fg:'#ffffff', bold:true});
+  g.numFmtRow(rt, 1, dates.length+1);
+  for (var c=0; c<=dates.length; c++) g.colWidth(c, 90);
+  return g;
+}
+
+function writeGridToSheet(title, gridBuilder) {
+  // Butun varaqni tozalab (avvalgi kattaroq haftaning ortiqcha qatorlari qolib
+  // ketmasligi uchun), keyin yangi qiymatlarni yozamiz.
+  var fullSheetRange = "'" + title + "'!A1:ZZ2000";
+  var writeRange = "'" + title + "'!A1";
+  return sheetsFetch('/values/' + encodeURIComponent(fullSheetRange) + ':clear', {
+    method: 'POST'
+  }).catch(function(){ /* varaq hali bo'sh bo'lsa clear xato berishi mumkin, e'tiborsiz qoldiramiz */ })
+  .then(function() {
+    return sheetsFetch('/values/' + encodeURIComponent(writeRange) + '?valueInputOption=RAW', {
+      method: 'PUT',
+      body: JSON.stringify({ range: writeRange, values: gridBuilder.values })
+    });
+  }).then(function() {
+    var reqs = gridBuilder.allRequests();
+    if (!reqs.length) return;
+    return sheetsFetch(':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: reqs }) });
+  });
+}
+
+function sendToSheetsDirect() {
+  if (!isSheetsConfigured()) {
+    toast('Аввал "Google Sheets’га улаш" тугмасини созланг (SETUP.md’га қаранг)', 'err');
+    setSt('exportSt', 'Созланмаган: GOOGLE_CLIENT_ID / SPREADSHEET_ID', 'err');
+    return;
+  }
+  if (!window.FB || !window.FB.ready) {
+    // Firestore'dan ma'lumot hali to'liq yuklanmagan bo'lsa jo'natmaymiz —
+    // aks holda bo'sh/to'liqsiz ma'lumot Sheets'dagi mavjud hisobotni bosib yozib qo'yishi mumkin.
+    toast('Маълумотлар ҳали юкланмоқда, бир оз кутинг...', 'err');
+    setSt('exportSt', 'Маълумотлар юкланмоқда, қайта уриниб кўринг', 'err');
+    return;
+  }
+  setSt('exportSt', 'Google Sheets га юборилмоқда...', 'ld');
+
+  var dates = getWeekDates(weekOffset);
+  var dateKeys = dates.map(function(d){ return dKey(d); });
+  var dateLabels = dates.map(function(d){ return dShort(d); });
+  var d0 = dates[0], d6 = dates[6];
+  var weekLabel = dShort(d0) + '-' + dShort(d6) + '.' + d6.getFullYear().toString().slice(2);
+  var data = {
+    weekLabel: weekLabel, dates: dateKeys, dateLabels: dateLabels,
+    sellers: SELLERS, sales: D.sales(), zp: D.zp(), klik: D.klik(), exp: D.exp()
+  };
+
+  var sheetTitles = { sales:'ПРОДАЖИ', rasxod:'РАСХОДЫ', klik:'КЛИК' };
+  var sheetIds = {};
+
+  Promise.all([
+    getOrCreateSheetId(sheetTitles.sales),
+    getOrCreateSheetId(sheetTitles.rasxod),
+    getOrCreateSheetId(sheetTitles.klik)
+  ]).then(function(ids) {
+    sheetIds.sales = ids[0]; sheetIds.rasxod = ids[1]; sheetIds.klik = ids[2];
+    var gSales  = buildSalesGrid(sheetIds.sales, data);
+    var gRasxod = buildRasxodGrid(sheetIds.rasxod, data);
+    var gKlik   = buildKlikGrid(sheetIds.klik, data);
+    return Promise.all([
+      writeGridToSheet(sheetTitles.sales, gSales),
+      writeGridToSheet(sheetTitles.rasxod, gRasxod),
+      writeGridToSheet(sheetTitles.klik, gKlik)
+    ]);
+  }).then(function() {
+    setSt('exportSt', 'Google Sheets га юборилди! ✓', 'ok');
+    toast('Google Sheets га юборилди!', 'ok');
+  }).catch(function(err) {
+    // Энди ХАҚИҚИЙ хатони кўрамиз (эски no-cors усулида бу мумкин эмас эди)
+    setSt('exportSt', 'Хато: ' + err.message, 'err');
+    toast('Юборишда хато: ' + err.message, 'err');
+  });
+}
 
 function exportCSV() {
   setSt('exportSt','CSV...','ld');
@@ -2449,6 +2814,7 @@ function initAppAfterAuth() {
   updateWChip();
   initInputPage();
   setCloud('ok', 'онлайн');
+  initGoogleAuth();
   var _fbOv = document.getElementById('fbLoadingOverlay');
   if (_fbOv) _fbOv.style.display = 'none';
   if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function(){});
