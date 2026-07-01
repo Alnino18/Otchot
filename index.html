@@ -2090,7 +2090,24 @@ function ensureGoogleToken(interactive) {
     if (gAccessToken && Date.now() < gTokenExpiry - 60000) { resolve(gAccessToken); return; }
     if (!gTokenClient) initGoogleAuth();
     if (!gTokenClient) { reject(new Error('Google Auth ҳали тайёр эмас, бир оз кутиб қайта уриниб кўринг')); return; }
+
+    var settled = false;
+    // МУҲИМ: "жим" (prompt:'') сўровда сессия эскирган бўлса, Google баъзан
+    // умуман callback чақирмайди (на хато, на муваффақият) — шунда wait абадий
+    // осилиб қолар эди. Шунинг учун таймаут қўямиз.
+    var timeoutMs = interactive ? 60000 : 8000;
+    var timer = setTimeout(function() {
+      if (settled) return;
+      settled = true;
+      reject(new Error(interactive
+        ? 'Google ойнаси жавоб бермади, қайта уриниб кўринг'
+        : 'Сессия эскирган — "Google Sheets’га улаш" тугмасини қайта босинг'));
+    }, timeoutMs);
+
     gTokenClient.callback = function(resp) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
       if (resp.error) { reject(new Error(resp.error)); return; }
       gAccessToken = resp.access_token;
       gTokenExpiry = Date.now() + (resp.expires_in * 1000);
@@ -2098,7 +2115,9 @@ function ensureGoogleToken(interactive) {
     };
     try {
       gTokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
-    } catch(e) { reject(e); }
+    } catch(e) {
+      if (!settled) { settled = true; clearTimeout(timer); reject(e); }
+    }
   });
 }
 
