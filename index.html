@@ -2222,7 +2222,18 @@ function makeGridBuilder(sheetId) {
       }
     });
   }
+  // Битта катакчани (масалан, кун-сотувчи сарлавҳасини) алоҳида рангда бўяш учун
+  function paintHeaderCell(r, colIdx, bg, fg) {
+    styleReqs.push({
+      repeatCell: {
+        range: { sheetId: sheetId, startRowIndex: r, endRowIndex: r+1, startColumnIndex: colIdx, endColumnIndex: colIdx+1 },
+        cell: { userEnteredFormat: { backgroundColor: hexToRgb01(bg), textFormat: { foregroundColor: hexToRgb01(fg), bold: true } } },
+        fields: 'userEnteredFormat(backgroundColor,textFormat)'
+      }
+    });
+  }
   return { values: values, addRow: addRow, numFmtRow: numFmtRow, merge: merge, colWidth: colWidth,
+           paintHeaderCell: paintHeaderCell,
            allRequests: function(){
              // МУҲИМ: аввалги (баъзан хатолик билан тугаган) уринишлардан қолган
              // эски "бирлаштирилган катакча"лар янги ёзувнинг диапазони билан
@@ -2234,50 +2245,64 @@ function makeGridBuilder(sheetId) {
 }
 
 // ── ЛИСТ: ПРОДАЖИ (syncSalesSheet'нинг JS кўчирмаси) ──
+// Сотувчи класси бўйича ранг (аппдаги .badge.* ранглари билан мос)
+var SELLER_CLS_HEX = { t:'#9b6dff', s:'#00c8b4', d:'#ffb547', b:'#4d9fff', r:'#ff4d6d', g:'#00d084' };
+
 function buildSalesGrid(sheetId, data) {
   var dates = data.dates || [], dl = data.dateLabels || dates, sel = data.sellers || [];
   var S = data.sales||{}, Z = data.zp||{}, K = data.klik||{}, E = data.exp||{};
   var EF = EXP_FIELDS;
   var g = makeGridBuilder(sheetId);
   var lastCol = dates.length + 2;
+  function n(v){return Number(v)||0;} function sum(a){return a.reduce(function(x,y){return x+y;},0);}
+
+  // Ҳар куннинг "ишлаган сотувчиси" — ўша куни маълумот киритган биринчи сотувчи.
+  // (Бир кунда фақат биттагина сотувчи ишлайди деб қабул қилинамиз.)
+  var daySeller = dates.map(function(dk){
+    for (var i=0;i<sel.length;i++) {
+      var s = sel[i];
+      var nal = n(((S[dk]||{})[s.id]||{}).nalichka);
+      var klikSum = (((K[dk]||{})[s.id])||[]).reduce(function(a,b){return a+n(b);},0);
+      var zp = n(((Z[dk]||{})[s.id]||{}).zarplata);
+      var pk = n(((Z[dk]||{})[s.id]||{}).pulkira);
+      if (nal>0 || klikSum>0 || zp>0 || pk>0) return s;
+    }
+    return null;
+  });
 
   var r0 = g.addRow(['НЕДЕЛЬНЫЙ ОТЧЕТ ПРОДАЖ ' + (data.weekLabel||'')], {bg:'#1a6b3a', fg:'#ffffff', size:13, bold:true});
   g.merge(r0, dates.length+2);
 
-  g.addRow(['Продажа'].concat(dl).concat(['','ОБЩ']), {bg:'#1a6b3a', fg:'#ffffff', size:9, bold:true});
+  // Сана қатори
+  g.addRow(['Продажа'].concat(dl).concat(['','НЕДЕЛЯ']), {bg:'#dcedc8', fg:'#1a1a1a', size:9, bold:true});
 
-  function n(v){return Number(v)||0;} function sum(a){return a.reduce(function(x,y){return x+y;},0);}
+  // Сотувчи (кун эгаси) қатори — ҳар куннинг ранги ўша куни ишлаган сотувчининг класси бўйича
+  var nameRowVals = [''].concat(daySeller.map(function(s){ return s ? s.name : '—'; })).concat(['','ОБШ']);
+  var rName = g.addRow(nameRowVals, {bg:'#22314a', fg:'#ffffff', size:9, bold:true});
 
-  sel.forEach(function(s) {
-    var pv = dates.map(function(dk){ return n(((S[dk]||{})[s.id]||{}).nalichka); });
-    var kv = dates.map(function(dk){ var a=((K[dk]||{})[s.id])||[]; return a.reduce(function(x,y){return x+n(y);},0); });
-    var tp = sum(pv), tk = sum(kv);
-    var r1 = g.addRow([s.name+' Наличка'].concat(pv).concat(['',tp]));
-    g.numFmtRow(r1, 1, lastCol);
-    var r2 = g.addRow(['  Клик'].concat(kv).concat(['',tk]));
-    g.numFmtRow(r2, 1, lastCol);
-  });
+  var nalDay = dates.map(function(dk,i){ var s=daySeller[i]; return s ? n(((S[dk]||{})[s.id]||{}).nalichka) : 0; });
+  var klikDay = dates.map(function(dk,i){ var s=daySeller[i]; if(!s) return 0; return (((K[dk]||{})[s.id])||[]).reduce(function(a,b){return a+n(b);},0); });
 
-  var kassaDay = dates.map(function(dk){
-    var v=0; sel.forEach(function(s){
-      v+=n(((S[dk]||{})[s.id]||{}).nalichka);
-      ((K[dk]||{})[s.id]||[]).forEach(function(x){v+=n(x);});
-    }); return v;
-  });
-  var rk = g.addRow(['КАССА'].concat(kassaDay).concat(['',sum(kassaDay)]), {bg:'#e8f5e9', fg:'#000000', bold:true});
-  g.numFmtRow(rk, 1, lastCol);
+  var rNal = g.addRow(['Наличи'].concat(nalDay).concat(['',sum(nalDay)]));
+  g.numFmtRow(rNal, 1, lastCol);
+  var rKlik = g.addRow(['Клик'].concat(klikDay).concat(['',sum(klikDay)]));
+  g.numFmtRow(rKlik, 1, lastCol);
+
+  var revDay = nalDay.map(function(v,i){ return v + klikDay[i]; });
+  var rRev = g.addRow([''].concat(revDay).concat(['',sum(revDay)]), {bold:true});
+  g.numFmtRow(rRev, 1, lastCol);
 
   var rr = g.addRow(['Расходы'], {bg:'#c0392b', fg:'#ffffff', bold:true, align:'CENTER'});
   g.merge(rr, dates.length+2);
 
-  sel.forEach(function(s) {
-    var zv = dates.map(function(dk){ return n(((Z[dk]||{})[s.id]||{}).zarplata); });
-    var pv = dates.map(function(dk){ return n(((Z[dk]||{})[s.id]||{}).pulkira); });
-    var r1 = g.addRow([s.name+' ЗП'].concat(zv).concat(['',sum(zv)]));
-    g.numFmtRow(r1, 1, lastCol);
-    var r2 = g.addRow(['  Йулкира'].concat(pv).concat(['',sum(pv)]));
-    g.numFmtRow(r2, 1, lastCol);
-  });
+  var zpDay = dates.map(function(dk,i){ var s=daySeller[i]; return s ? n(((Z[dk]||{})[s.id]||{}).zarplata) : 0; });
+  var pkDay = dates.map(function(dk,i){ var s=daySeller[i]; return s ? n(((Z[dk]||{})[s.id]||{}).pulkira) : 0; });
+  var rZp = g.addRow(['Зарплата'].concat(zpDay).concat(['',sum(zpDay)]));
+  g.numFmtRow(rZp, 1, lastCol);
+  var rPk = g.addRow(['Йулкира'].concat(pkDay).concat(['',sum(pkDay)]));
+  g.numFmtRow(rPk, 1, lastCol);
+
+  g.addRow(['']); // бўш қатор
 
   var miscDay = new Array(dates.length).fill(0), totMisc = 0;
   EF.forEach(function(f) {
@@ -2286,21 +2311,24 @@ function buildSalesGrid(sheetId, data) {
   var rm = g.addRow(['Прочие расходы'].concat(miscDay).concat(['',totMisc]));
   g.numFmtRow(rm, 1, lastCol);
 
-  g.addRow(['']); // bo'sh qator
+  g.addRow(['']); // бўш қатор
 
-  var obshDay = kassaDay.map(function(v,i){ return v + miscDay[i]; });
-  var ro = g.addRow(['Общая касса'].concat(obshDay).concat(['',sum(obshDay)]), {bg:'#1a6b3a', fg:'#ffffff', bold:true});
+  var obshDay = revDay.map(function(v,i){ return v + miscDay[i]; });
+  var ro = g.addRow(['Общая касса'].concat(obshDay).concat(['',sum(obshDay)]), {bg:'#8bc34a', fg:'#000000', bold:true});
   g.numFmtRow(ro, 1, lastCol);
 
-  var palDay = dates.map(function(dk){ var v=0; sel.forEach(function(s){ v+=n(((S[dk]||{})[s.id]||{}).nalichka); }); return v; });
-  var zpDay  = dates.map(function(dk){ var v=0; sel.forEach(function(s){ v+=n(((Z[dk]||{})[s.id]||{}).zarplata)+n(((Z[dk]||{})[s.id]||{}).pulkira); }); return v; });
-  var nahtDay = palDay.map(function(v,i){ return v - zpDay[i]; });
-  var rn = g.addRow(['Наличка колди'].concat(nahtDay).concat(['',sum(nahtDay)]), {bg:'#155724', fg:'#ffffff', bold:true});
+  var nahtDay = nalDay.map(function(v,i){ return v - (zpDay[i]+pkDay[i]); });
+  var rn = g.addRow(['Нахт колди'].concat(nahtDay).concat(['',sum(nahtDay)]), {bg:'#155724', fg:'#ffffff', bold:true});
   g.numFmtRow(rn, 1, lastCol);
 
-  g.colWidth(0, 150);
+  g.colWidth(0, 130);
   for (var c=1; c<=dates.length; c++) g.colWidth(c, 90);
-  g.colWidth(dates.length+2, 110);
+  g.colWidth(dates.length+2, 100);
+
+  // Кун устунлари сарлавҳасини сотувчи рангида бўяш (rName қатор)
+  daySeller.forEach(function(s, i) {
+    g.paintHeaderCell(rName, i+1, s ? (SELLER_CLS_HEX[s.cls] || '#555555') : '#333333', '#ffffff');
+  });
 
   return g;
 }
