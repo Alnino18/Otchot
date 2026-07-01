@@ -2223,7 +2223,14 @@ function makeGridBuilder(sheetId) {
     });
   }
   return { values: values, addRow: addRow, numFmtRow: numFmtRow, merge: merge, colWidth: colWidth,
-           allRequests: function(){ return styleReqs.concat(colWidthReqs); } };
+           allRequests: function(){
+             // МУҲИМ: аввалги (баъзан хатолик билан тугаган) уринишлардан қолган
+             // эски "бирлаштирилган катакча"лар янги ёзувнинг диапазони билан
+             // қисман тўғри келмай қолиши мумкин ("mergeCells" хатоси). Шунинг
+             // учун ҳар сафар аввал БУТУН варақдаги бирлаштиришларни бекор қиламиз.
+             var unmerge = { unmergeCells: { range: { sheetId: sheetId } } };
+             return [unmerge].concat(styleReqs, colWidthReqs);
+           } };
 }
 
 // ── ЛИСТ: ПРОДАЖИ (syncSalesSheet'нинг JS кўчирмаси) ──
