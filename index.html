@@ -514,6 +514,12 @@ nav button.on::after{
   </div>
 </div>
 
+<div id="fbLoadingOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg,#0b1120);color:#fff;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;font-size:14px;">
+  <div style="width:32px;height:32px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:fbspin .8s linear infinite;"></div>
+  <div>Маълумотлар юкланмоқда...</div>
+</div>
+<style>@keyframes fbspin{to{transform:rotate(360deg)}}</style>
+
 <div id="app">
   <header>
     <div class="logo">Ҳисобот</div>
@@ -863,6 +869,11 @@ onAuthStateChanged(auth, async function(user) {
 
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
+    // Ma'lumot hali Firestore'dan kelmagan bo'lishi mumkin — shu payt oralig'ida
+    // foydalanuvchi tayyor bo'lmagan interfeys bilan ishlab, ma'lumot yo'qotmasligi uchun
+    // yuklanish overlay'ini ko'rsatamiz (birinchi snapshot kelganda avtomatik yashiriladi).
+    var _fbOv = document.getElementById('fbLoadingOverlay');
+    if (_fbOv && !window.FB.ready) _fbOv.style.display = 'flex';
 
     // Role ga qarab UI ni sozlash
     applyRoleUI(window.FB.role);
@@ -870,8 +881,13 @@ onAuthStateChanged(auth, async function(user) {
     // Firestore sync faqat birinchi marta ishga tushadi
     if (!_appInitialized) {
       _appInitialized = true;
+      // MUHIM: onFbReady() bu yerda EMAS — u startFirestoreSync() ichida,
+      // birinchi haqiqiy snapshot kelgandan KEYIN chaqiriladi.
+      // Aks holda ilova FBDATA hali bo'sh ({}) bo'lganida ochilib qolib,
+      // foydalanuvchi biror amal qilsa (masalan sotuvchi qo'shsa),
+      // fbSaveAll() Firestore'dagi haqiqiy ma'lumotlarni bo'sh {} bilan
+      // ustidan yozib, butunlay o'chirib yuborishi mumkin edi.
       startFirestoreSync();
-      if (window.onFbReady) window.onFbReady();
     } else {
       // Qayta kirish holatida faqat UI rolini yangilaymiz, sync davom etadi
       applyRoleUI(window.FB.role);
@@ -912,6 +928,7 @@ window.FBDATA = {
 
 function startFirestoreSync() {
   if (window.FB.unsub) window.FB.unsub();
+  var _isFirstSnapshot = true;
   window.FB.unsub = onSnapshot(window.FB.docRef, function(snap) {
     if (snap.exists()) {
       var d = snap.data();
@@ -935,6 +952,13 @@ function startFirestoreSync() {
       }
     }
     window.FB.ready = true;
+    // Ilova UI faqat HAQIQIY ma'lumot (yoki uning yo'qligi tasdiqlangani) kelgandan
+    // keyin ochiladi — shu tufayli hech qanday saqlash amali bo'sh keshni
+    // Firestore ustiga yozib yubormaydi.
+    if (_isFirstSnapshot) {
+      _isFirstSnapshot = false;
+      if (window.onFbReady) window.onFbReady();
+    }
     if (window.onFbDataChange) window.onFbDataChange();
   }, function(err) {
     console.error('Firestore sync xato:', err);
@@ -945,6 +969,12 @@ function startFirestoreSync() {
 // ── FIRESTORE: yozish (debounced, har field alohida timer) ──
 var fbWriteTimers = {};
 window.fbSaveField = function(field, value) {
+  if (!window.FB.ready) {
+    // Hali Firestore'dan boshlang'ich ma'lumot kelmagan — yozishni rad etamiz,
+    // aks holda lokal (bo'sh/eski) qiymat bilan haqiqiy ma'lumotni ustidan yozib yuboramiz.
+    console.warn('fbSaveField rad etildi: FB hali tayyor emas ("' + field + '")');
+    return;
+  }
   window.FBDATA[field] = value;
   // Har field uchun alohida timer — biri ikkinchisini bekor qilmaydi
   clearTimeout(fbWriteTimers[field]);
@@ -959,6 +989,10 @@ window.fbSaveField = function(field, value) {
 };
 
 window.fbSaveFieldImmediate = function(field, value) {
+  if (!window.FB.ready) {
+    console.warn('fbSaveFieldImmediate rad etildi: FB hali tayyor emas ("' + field + '")');
+    return Promise.resolve();
+  }
   window.FBDATA[field] = value;
   var patch = {};
   patch[field] = value;
@@ -967,6 +1001,15 @@ window.fbSaveFieldImmediate = function(field, value) {
 
 // Barcha asosiy fieldlarni BITTA yozuvda saqlash (race condition yo'q)
 window.fbSaveAll = function(callback) {
+  if (!window.FB.ready) {
+    // MUHIM HIMOYA: Firestore'dan boshlang'ich ma'lumot hali yuklanmagan bo'lsa,
+    // window.FBDATA hali bo'sh/to'liqsiz bo'ladi. Shu holatda yozsak — haqiqiy
+    // sales/zp/klik/exp ma'lumotlari bo'sh {} bilan almashtirilib, butunlay
+    // yo'qolib qoladi. Shuning uchun tayyor bo'lguncha yozishni to'xtatamiz.
+    console.warn('fbSaveAll rad etildi: FB hali tayyor emas (ma\'lumotlar hali yuklanmoqda)');
+    if (window.toast) window.toast('Маълумотлар юкланмоқда, бир оз кутинг...', 'err');
+    return Promise.resolve();
+  }
   return setDoc(window.FB.docRef, {
     sellers: window.FBDATA.sellers || [],
     sales:   window.FBDATA.sales   || {},
@@ -1025,17 +1068,29 @@ var D = {
 function getSellers() {
   var arr = window.FBDATA.sellers;
   if (arr && arr.length) return arr;
-  return [
+  // MUHIM: default massivni to'g'ridan-to'g'ri window.FBDATA.sellers ga bog'laymiz,
+  // aks holda alohida (bog'lanmagan) massiv qaytarilib, unga qilingan o'zgarishlar
+  // (push/splice) haqiqiy FBDATA ga ta'sir qilmay qolar edi.
+  var def = [
     {id:'tanya', name:'Tanya', cls:'t', fixedPul:50000},
     {id:'sveta', name:'Sveta', cls:'s', fixedPul:50000},
     {id:'dilnoza', name:'Dilnoza', cls:'d', fixedPul:0}
   ];
+  window.FBDATA.sellers = def;
+  return def;
 }
 function saveSellersData(arr) {
   window.FBDATA.sellers = arr;
   window._lastSaveTime = Date.now();
   rebuildAll();
-  window.fbSaveAll();
+  // FAQAT 'sellers' fieldini yozamiz — sotuvchi qo'shish/o'chirish sales/zp/klik/exp
+  // bilan bog'liq emas, shuning uchun butun hujjatni qayta yozish (fbSaveAll) shart emas
+  // va xato/eskirgan lokal keshdan kelib chiqadigan ma'lumot yo'qolishining oldini oladi.
+  if (window.fbSaveFieldImmediate) {
+    window.fbSaveFieldImmediate('sellers', arr);
+  } else if (window.fbSaveAll) {
+    window.fbSaveAll();
+  }
 }
 
 var SELLERS = [];
@@ -1940,6 +1995,15 @@ function sendToSheets() {
     setSt('exportSt', 'SHEETS_URL белгиланмаган', 'err');
     return;
   }
+  if (!window.FB || !window.FB.ready) {
+    // MUHIM HIMOYA: agar Firestore'dan ma'lumot hali to'liq yuklanmagan bo'lsa,
+    // window.FBDATA hali bo'sh/to'liqsiz bo'lishi mumkin. Shu holatda Google Sheets'ga
+    // yuborsak, Apps Script tomonidagi _DB varag'i (zaxira) bo'sh ma'lumot bilan
+    // ustidan yozilib, avvalgi zaxira butunlay yo'qolib qoladi.
+    toast('Маълумотлар ҳали юкланмоқда, бир оз кутинг...', 'err');
+    setSt('exportSt', 'Маълумотлар юкланмоқда, қайта уриниб кўринг', 'err');
+    return;
+  }
   setSt('exportSt', 'Google Sheets га юборилмоқда...', 'ld');
   try {
     var dates    = getWeekDates(weekOffset);
@@ -2108,11 +2172,13 @@ function renderSelMgmt(){
 }
 function addSeller(){
   if (!window.isAdmin || !window.isAdmin()) { toast('Фақат администратор учун', 'err'); return; }
+  if (!window.FB || !window.FB.ready) { toast('Маълумотлар ҳали юкланмоқда, бир оз кутинг...', 'err'); return; }
   var arr=getSellers(), idx=arr.length;
   arr.push({id:'sel'+Date.now(), name:'Сотувчи '+(idx+1), cls:SELLER_CLS[idx%SELLER_CLS.length], fixedPul:0});
   saveSellersData(arr); renderSelMgmt();
 }
 function delSeller(i){
+  if (!window.FB || !window.FB.ready) { toast('Маълумотлар ҳали юкланмоқда, бир оз кутинг...', 'err'); return; }
   var arr=getSellers();
   if(arr.length<=1){setSt('selSt','Камида 1 сотувчи керак','err');return;}
   if(!confirm('Ўчириш '+arr[i].name+'?')) return;
@@ -2120,6 +2186,7 @@ function delSeller(i){
 }
 function saveSellers(){
   if (!window.isAdmin || !window.isAdmin()) { toast('Фақат администратор учун', 'err'); return; }
+  if (!window.FB || !window.FB.ready) { toast('Маълумотлар ҳали юкланмоқда, бир оз кутинг...', 'err'); return; }
   var arr=getSellers();
   arr.forEach(function(s,i){
     var n=document.getElementById('snm'+i), p=document.getElementById('spl'+i);
@@ -2382,6 +2449,8 @@ function initAppAfterAuth() {
   updateWChip();
   initInputPage();
   setCloud('ok', 'онлайн');
+  var _fbOv = document.getElementById('fbLoadingOverlay');
+  if (_fbOv) _fbOv.style.display = 'none';
   if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function(){});
   (function(){
     var h=location.hash.slice(1);

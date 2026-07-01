@@ -44,15 +44,39 @@ function saveToDBSheet(data) {
     sheet = ss.insertSheet(SHEET_DB);
     sheet.hideSheet();
   }
-  sheet.clearContents();
-  // Сохраняем как JSON в ячейку A1
-  sheet.getRange(1,1).setValue(JSON.stringify({
+
+  const incoming = {
     sales: data.sales || {},
     zp:    data.zp    || {},
     klik:  data.klik  || {},
-    exp:   data.exp   || {},
+    exp:   data.exp   || {}
+  };
+
+  // ЗАЩИТА: если пришедшие данные полностью пустые, а в резервной копии
+  // уже что-то сохранено — не перезаписываем (иначе один "ранний"/сбойный
+  // запрос от клиента может стереть всю резервную копию в Google Sheets).
+  const incomingIsEmpty = Object.keys(incoming.sales).length === 0 &&
+                           Object.keys(incoming.zp).length    === 0 &&
+                           Object.keys(incoming.klik).length  === 0 &&
+                           Object.keys(incoming.exp).length   === 0;
+  if (incomingIsEmpty) {
+    const existing = loadFromDB();
+    const existingHasData = existing && (
+      Object.keys(existing.sales || {}).length > 0 ||
+      Object.keys(existing.zp    || {}).length > 0 ||
+      Object.keys(existing.klik  || {}).length > 0 ||
+      Object.keys(existing.exp   || {}).length > 0
+    );
+    if (existingHasData) {
+      throw new Error('Бўш маълумот келди — эски резерв нусха сақланиб қолди (қайта уринмади).');
+    }
+  }
+
+  sheet.clearContents();
+  // Сохраняем как JSON в ячейку A1
+  sheet.getRange(1,1).setValue(JSON.stringify(Object.assign({}, incoming, {
     saved: new Date().toISOString()
-  }));
+  })));
 }
 
 // ── Загрузить данные из _DB ──
