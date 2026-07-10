@@ -1916,7 +1916,8 @@ function sendDayTg() {
     'Нақд пул: ' + n(s.nal) + '\nКлик: ' + n(s.ksum) + '\nКасса ойлик: ' + n(s.kassa) + '\n\n' +
     'Маош: ' + n(s.zv) + '\nЮлқира: ' + n(s.pv) + '\n\n' +
     'Ойлик ташқари харажат: ' + n(data.misc) + '\n\n' +
-    'Умумий касса: ' + n(s.kassa+data.misc) + '\nНахт қолди: ' + n(s.нахт);
+    'Умумий касса: ' + n(s.kassa+data.misc) + '\n\n' +
+    'Нахт : ' + n(s.нахт) + '\nКлик : ' + n(s.ksum) + '\nКасса : ' + n(s.нахт+s.ksum);
   tgSend(text, 'dayTgSt');
 }
 function sendWeekTg() {
